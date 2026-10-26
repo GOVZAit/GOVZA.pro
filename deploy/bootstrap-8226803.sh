@@ -4,7 +4,7 @@ umask 077
 test "$(id -u)" = 0
 test "$(hostname -s)" = cv8226803
 cd /opt/govza
-export PATH=/usr/local/bin:/usr/bin:/bin
+export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
 node -v
 test "$(node -p 'process.versions.node.split(".")[0]')" = 22
 if ! swapon --show | grep -q .; then
@@ -16,7 +16,7 @@ if ! swapon --show | grep -q .; then
     echo '/swapfile none swap sw 0 0' >> /etc/fstab
   fi
 fi
-apt-get update
+apt-get -o Dir::Etc::sourceparts=- update
 DEBIAN_FRONTEND=noninteractive apt-get install -y nginx postgresql postgresql-contrib certbot python3-certbot-nginx
 systemctl enable --now postgresql nginx
 id serviceagg >/dev/null 2>&1 || useradd --create-home --shell /bin/bash serviceagg
