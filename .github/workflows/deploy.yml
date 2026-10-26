@@ -54,7 +54,7 @@ jobs:
           mv "$RUNNER_TEMP/release.tar.gz" release.tar.gz
       - name: Configure SSH
         env:
-          DEPLOY_HOST: 194.67.92.216
+          DEPLOY_HOST: 89.111.169.155
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
         run: |
           install -d -m 0700 ~/.ssh
@@ -63,13 +63,13 @@ jobs:
           ssh-keyscan -T 10 -H "$DEPLOY_HOST" > ~/.ssh/known_hosts
       - name: Upload release
         env:
-          DEPLOY_HOST: 194.67.92.216
+          DEPLOY_HOST: 89.111.169.155
           DEPLOY_USER: serviceagg-deploy
         run: |
           scp -o BatchMode=yes release.tar.gz "$DEPLOY_USER@$DEPLOY_HOST:/home/serviceagg-deploy/incoming/$GITHUB_SHA.tar.gz"
       - name: Activate release with verified database backup
         env:
-          DEPLOY_HOST: 194.67.92.216
+          DEPLOY_HOST: 89.111.169.155
           DEPLOY_USER: serviceagg-deploy
         run: |
           set -euo pipefail
@@ -79,7 +79,7 @@ jobs:
           grep -F "Deployed $GITHUB_SHA" "$RUNNER_TEMP/activation.log"
       - name: Preserve HTTPS after reverse-proxy release activation
         env:
-          DEPLOY_HOST: 194.67.92.216
+          DEPLOY_HOST: 89.111.169.155
           DEPLOY_USER: serviceagg-deploy
         run: |
           set -euo pipefail
