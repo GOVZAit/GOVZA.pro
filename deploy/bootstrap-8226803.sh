@@ -45,7 +45,7 @@ unset db_password session_secret
 set -a
 . /etc/service-aggregator/app.env
 set +a
-npm ci
+npm ci --include=dev
 npm run check
 npm run build
 npm run smoke:build
