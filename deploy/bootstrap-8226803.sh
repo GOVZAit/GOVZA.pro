@@ -46,8 +46,8 @@ set -a
 . /etc/service-aggregator/app.env
 set +a
 npm ci --include=dev
-npm run check
-npm run build
+NODE_OPTIONS=--max-old-space-size=1400 npm run check
+NODE_OPTIONS=--max-old-space-size=1400 npm run build
 npm run smoke:build
 # Generate initial SQL, then apply only to the database created above.
 test "$(sudo -u postgres psql -d govza -Atc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public'")" = 0
