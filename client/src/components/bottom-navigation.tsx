@@ -14,7 +14,7 @@ export function PrimaryNavLinks({ desktop = false }: { desktop?: boolean }) {
   const [location] = useLocation();
   const { totalCount } = useUnreadCounts();
   const active = (id: string) => {
-    if (id === "home") return ["/", "/auto-parts", "/doctors", "/contacts", "/city", "/lost-found", "/more"].includes(location) || /^\/master\/\d+/.test(location) || location.startsWith("/auto-parts/");
+    if (id === "home") return ["/", "/organizations", "/auto-parts", "/doctors", "/contacts", "/city", "/lost-found", "/more"].includes(location) || /^\/master\/\d+/.test(location) || location.startsWith("/auto-parts/");
     if (id === "requests") return location === "/requests" || location === "/orders";
     if (id === "messages") return location.startsWith("/messages") || /^\/orders\/\d+\/chat/.test(location);
     if (id === "profile") return location.startsWith("/profile") || location.startsWith("/saved");

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, Phone, MapPin, Clock, Star, Baby, Home as HomeIcon, ChevronLeft, Send, MessageCircle, Stethoscope, HeartPulse, Brain, Eye, Ear, Smile, Flower2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link, useSearch } from "wouter";
+import { clinicLocationKey } from "@shared/provider-directory";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DirectoryFrame, DirectorySearch, DirectoryChip, DirectoryResults } from "@/components/directory-layout";
@@ -34,6 +36,8 @@ function ClinicLocation({ location }: { location: DoctorLocation }) {
 }
 
 export default function DoctorsPage() {
+  const search = useSearch();
+  const clinic = new URLSearchParams(search).get("clinic");
   const [query, setQuery] = useState("");
   const [specialty, setSpecialty] = useState<string | null>(null);
   const [filters, setFilters] = useState<Filters>(defaults);
@@ -42,17 +46,21 @@ export default function DoctorsPage() {
   const [view, setView] = useState<"list" | "map">("list");
   const [chatDoctor, setChatDoctor] = useState<Doctor | null>(null);
   const { data: doctors = seededDoctors, isError, refetch } = useQuery<Doctor[]>({ queryKey: ["/api/directory/doctors"], initialData: seededDoctors });
-  const doctorCities = useMemo(() => Array.from(new Set(doctors.flatMap((d) => d.locations.map((l) => l.city)))), [doctors]);
-  const filtered = useMemo(() => selectDoctors(doctors, query, specialty, filters), [doctors, query, specialty, filters]);
-  const previewCount = useMemo(() => selectDoctors(doctors, query, specialty, draft).length, [doctors, query, specialty, draft]);
+  const scopedDoctors = useMemo(() => clinic ? doctors.map(doctor => ({ ...doctor, locations: doctor.locations.filter(location => clinicLocationKey(location) === clinic) })).filter(doctor => doctor.locations.length > 0) : doctors, [doctors, clinic]);
+  const selectedClinic = doctors.flatMap(doctor => doctor.locations).find(location => clinicLocationKey(location) === clinic);
+  const doctorCities = useMemo(() => Array.from(new Set(scopedDoctors.flatMap((d) => d.locations.map((l) => l.city)))), [scopedDoctors]);
+  const filtered = useMemo(() => selectDoctors(scopedDoctors, query, specialty, filters), [scopedDoctors, query, specialty, filters]);
+  const previewCount = useMemo(() => selectDoctors(scopedDoctors, query, specialty, draft).length, [scopedDoctors, query, specialty, draft]);
   const filterCount = [filters.city !== null, filters.children, filters.homeVisits, filters.sortBy !== "rating"].filter(Boolean).length;
   const openFilters = () => { setDraft({ ...filters }); setShowFilters(true); };
   if (chatDoctor) return <DoctorChat doctor={chatDoctor} onBack={() => setChatDoctor(null)} />;
 
-  return <DirectoryFrame title="Врачи" description="Специальности, места приёма и контакты." city={filters.city ?? "Все города"} onCityClick={openFilters}>
+  return <DirectoryFrame title="Врачи" serviceSection="doctors" description="Специальности, места приёма и контакты." city={filters.city ?? "Все города"} onCityClick={openFilters}>
     <DirectorySearch value={query} onChange={setQuery} placeholder="Врач или специальность" onFilters={openFilters} filtersOpen={showFilters}
       filterCount={filterCount} testId="input-doctor-search" filterTestId="button-doctor-filters" />
     <main className="directory-container">
+      <nav className="directory-services" aria-label="Медицинские каталоги"><Link href="/organizations?kind=medical">Клиники и медцентры</Link>{clinic && <Link href="/doctors">Все врачи</Link>}</nav>
+      {clinic && <p className="request-draft-note clinic-source-note" role="status">Место приёма: {selectedClinic ? [selectedClinic.clinic, selectedClinic.city, selectedClinic.address].filter(Boolean).join(", ") : "по выбранной ссылке"}</p>}
       <div className="directory-rail" aria-label="Специальности врачей">
         <DirectoryChip active={!specialty} onClick={() => setSpecialty(null)}>Все специальности</DirectoryChip>
         {doctorSpecialties.map((s) => { const Icon = specialtyIcons[s.id] ?? Stethoscope; return <DirectoryChip key={s.id} active={specialty === s.id}
@@ -64,7 +72,7 @@ export default function DoctorsPage() {
         <button type="button" className="directory-secondary" onClick={() => { setFilters(defaults); setSpecialty(null); setQuery(""); }}>Сбросить поиск и фильтры</button>
       </div> : view === "map" ? <div className="directory-map"><MapView organizations={filtered.flatMap((doc) => doc.locations.filter((l) => !filters.city || l.city === filters.city).map((l, i) => ({ id: `${doc.id}-${i}`, name: doc.name, subcategory: `${doc.specialty} · ${l.clinic}`, address: `${l.city}, ${l.address}`, phone: doc.phone, hours: l.schedule, lat: l.lat, lng: l.lng })))} /></div>
       : <div className="directory-grid">{filtered.map((doc) => {
-        const locations = doc.locations.filter((l) => !filters.city || l.city === filters.city);
+        const locations = doc.locations.filter((l) => (!filters.city || l.city === filters.city) && (!clinic || clinicLocationKey(l) === clinic));
         return <article key={doc.id} className="directory-card" data-testid={`doctor-card-${doc.id}`}>
           <div className="directory-card-header"><Avatar className="directory-avatar"><AvatarImage src={doc.avatar} alt="" className="object-cover" /><AvatarFallback className="bg-transparent font-semibold">{doc.name.split(/\s+/).map((n) => n[0]).join("").slice(0, 2)}</AvatarFallback></Avatar>
             <div className="directory-person"><h3>{doc.name}</h3><p>{doc.specialty}</p></div>

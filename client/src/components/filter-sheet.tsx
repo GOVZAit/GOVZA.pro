@@ -18,9 +18,10 @@ interface PanelProps {
   value: FilterState;
   onChange: (value: FilterState) => void;
   districts?: string[];
+  directoryType?: "master" | "organization";
 }
 
-export function FilterPanel({ value, onChange, districts = [] }: PanelProps) {
+export function FilterPanel({ value, onChange, districts = [], directoryType }: PanelProps) {
   const id = useId();
   const set = <K extends keyof FilterState>(key: K, next: FilterState[K]) => onChange({ ...value, [key]: next });
   const inputClass = "min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm";
@@ -86,16 +87,16 @@ export function FilterPanel({ value, onChange, districts = [] }: PanelProps) {
 
       <fieldset className="space-y-3">
         <legend className="mb-2 text-sm font-semibold">Исполнитель</legend>
-        <label className="block text-xs text-muted-foreground">Тип профиля
+        {!directoryType && <label className="block text-xs text-muted-foreground">Тип профиля
           <select className={`${inputClass} mt-1 text-foreground`} value={value.providerType} onChange={(event) => set("providerType", event.target.value as FilterState["providerType"])}>
             <option value="all">Все</option><option value="master">Мастер</option><option value="organization">Организация</option>
           </select>
-        </label>
-        <label className="block text-xs text-muted-foreground">Статус исполнителя
+        </label>}
+        {directoryType !== "organization" && <label className="block text-xs text-muted-foreground">Статус исполнителя
           <select className={`${inputClass} mt-1 text-foreground`} value={value.executorType} onChange={(event) => set("executorType", event.target.value as FilterState["executorType"])}>
-            <option value="all">Любой</option><option value="private">Частное лицо</option><option value="self_employed">Самозанятый</option><option value="company">Компания</option>
+            <option value="all">Любой</option><option value="private">Частное лицо</option><option value="self_employed">Самозанятый</option>{!directoryType && <option value="company">Компания</option>}
           </select>
-        </label>
+        </label>}
         {allDistricts.length > 0 && <label className="block text-xs text-muted-foreground">Район
           <select className={`${inputClass} mt-1 text-foreground`} value={value.district} onChange={(event) => set("district", event.target.value)}>
             <option value="all">Все районы</option>{allDistricts.map((district) => <option key={district} value={district}>{district}</option>)}
@@ -114,18 +115,18 @@ interface FilterSheetProps extends PanelProps {
   availabilityLoading?: boolean;
 }
 
-export default function FilterSheet({ value, onChange, onClose, masters, districts, availableIds, availabilityLoading }: FilterSheetProps) {
+export default function FilterSheet({ value, onChange, onClose, masters, districts, availableIds, availabilityLoading, directoryType }: FilterSheetProps) {
   const [draft, setDraft] = useState(value);
   const count = applyMasterFilters(masters, draft, availableIds).length;
   const invalidPrice = draft.minPrice !== null && draft.maxPrice !== null && draft.minPrice > draft.maxPrice;
   const checking = draft.availableTodayOnly && availabilityLoading;
-  return <ResponsivePanel open onOpenChange={(open) => { if (!open) onClose(); }} title="Фильтры мастеров"
+  return <ResponsivePanel open onOpenChange={(open) => { if (!open) onClose(); }} title={directoryType === "organization" ? "Фильтры организаций" : "Фильтры специалистов"}
     description="Выберите условия и примените. Город и поиск сохранятся."
     footer={<><button type="button" className="directory-secondary" onClick={() => setDraft({ ...defaultFilterState })}>Сбросить</button>
       <button type="button" className="directory-primary" disabled={invalidPrice || checking} onClick={() => { onChange(draft); onClose(); }} data-testid="button-filter-apply">
         {checking ? "Проверяем…" : `Показать: ${count}`}
       </button></>}>
-    <FilterPanel value={draft} onChange={setDraft} districts={districts} />
+    <FilterPanel value={draft} onChange={setDraft} districts={districts} directoryType={directoryType} />
     <p className="sr-only" role="status" aria-live="polite">Найдено: {count}</p>
   </ResponsivePanel>;
 }

@@ -19,6 +19,7 @@ import { cities, type Category, type Master } from "@shared/schema";
 import { clearRequestDraft, readRequestDraft } from "@/lib/request-draft";
 import productFeatures from "@shared/product-features.json";
 import { MasterComparison } from "@/components/master-comparison";
+import { isOrganizationProfile, providerDisplayName, type ProviderDirectory } from "@shared/provider-directory";
 
 const categoryIcons: Record<string, typeof PlugZap> = { Wrench: Droplets, Zap: PlugZap, Sparkles, Hammer, Palette, Car, Package: Truck, BookOpen: GraduationCap };
 function MasterCardSkeleton() {
@@ -28,10 +29,18 @@ function MasterCardSkeleton() {
   </div>;
 }
 const DEFAULT_CITY: string = cities[0];
-export default function HomePage() {
+export default function HomePage({ directory = "specialists" }: { directory?: ProviderDirectory }) {
+  const organizations = directory === "organizations";
   const { user, isLoading: authLoading } = useAuth();
-  const [catalog, setCatalog] = useCatalogState(user?.id, !authLoading);
-  const { query: searchQuery, category: selectedCategory, city, view: viewMode, filters: filterState } = catalog;
+  const [catalog, setCatalog] = useCatalogState(user?.id, !authLoading, directory);
+  const { query: searchQuery, category: selectedCategory, city, view: viewMode } = catalog;
+  // The selected catalog owns profile type; stale legacy filters cannot hide its contents.
+  const filterState = useMemo(() => ({ ...catalog.filters, providerType: "all" as const, executorType: organizations ? "all" as const : catalog.filters.executorType === "company" ? "all" as const : catalog.filters.executorType }), [catalog.filters, organizations]);
+  useEffect(() => {
+    if (catalog.filters.providerType !== filterState.providerType || catalog.filters.executorType !== filterState.executorType) {
+      setCatalog(current => ({ ...current, filters: { ...current.filters, providerType: filterState.providerType, executorType: filterState.executorType } }));
+    }
+  }, [catalog.filters.providerType, catalog.filters.executorType, filterState.providerType, filterState.executorType]);
   const setSearchQuery = (query: string) => setCatalog((current) => ({ ...current, query }));
   const setSelectedCategory = (next: SetStateAction<number | null>) => setCatalog((current) => ({
     ...current, category: typeof next === "function" ? next(current.category) : next,
@@ -69,13 +78,15 @@ export default function HomePage() {
   const comparedMasters = allMasters.filter(master => comparisonIds.includes(master.id));
   const toggleComparison = (id: number) => setComparisonIds(ids => ids.includes(id) ? ids.filter(value => value !== id) : ids.length < 3 ? [...ids, id] : ids);
   const recent = useRecentMasters();
+  const recentInDirectory = recent.data.filter(item => isOrganizationProfile(item.master) === organizations);
   const availability = useTodayAvailability();
   const { availableIds } = availability;
 
   const contextMasters = useMemo(() => allMasters.filter((master) =>
+    isOrganizationProfile(master) === organizations &&
     (city === DEFAULT_CITY || master.city === city) &&
     (!selectedCategory || (master.categoryIds ?? [master.categoryId]).includes(selectedCategory)),
-  ), [allMasters, city, selectedCategory]);
+  ), [allMasters, city, selectedCategory, organizations]);
   const baseMasters = useMemo(() => searchMasters(contextMasters, debouncedSearch), [contextMasters, debouncedSearch]);
   const filteredMasters = useMemo(() => sortMasters(
     applyMasterFilters(baseMasters, filterState, availableIds), filterState.sortBy, Boolean(normalizeSearch(debouncedSearch)),
@@ -97,17 +108,17 @@ export default function HomePage() {
   const clearFilters = () => setCatalog((current) => ({ ...current, category: null, filters: { ...defaultFilterState } }));
 
   return (
-    <DirectoryFrame title="Услуги рядом" description="Найдите специалиста или создайте заявку." city={city} onCityClick={() => setShowLocation(true)}>
-      <DirectorySearch value={searchQuery} onChange={setSearchQuery} placeholder="Услуга или мастер"
+    <DirectoryFrame title={organizations ? "Организации" : "Специалисты"} description={organizations ? "Компании, бригады и сервисные центры." : "Частные специалисты и самозанятые."} serviceSection={directory} city={city} onCityClick={() => setShowLocation(true)}>
+      <DirectorySearch value={searchQuery} onChange={setSearchQuery} placeholder={organizations ? "Услуга или организация" : "Услуга или мастер"}
         onFilters={() => setShowFilter(true)} filtersOpen={showFilter}
         filterCount={activeFilters.length + (filterState.sortBy !== defaultFilterState.sortBy ? 1 : 0)}
         testId="input-search" filterTestId="button-filter" suggestions={suggestions} />
       <main className="directory-container">
         <nav className="directory-services" aria-label="Другие услуги">
           {productFeatures.autoParts && <Link href="/auto-parts"><Car size={18} aria-hidden="true" />Запчасти</Link>}
-          <Link href="/doctors">Врачи</Link>
           <Link href="/more">Все сервисы<ChevronRight size={16} aria-hidden="true" /></Link>
         </nav>
+        {organizations && <nav className="directory-rail" aria-label="Виды организаций"><Link href="/organizations" className="directory-chip is-selected" aria-current="page">Все организации</Link><Link href="/organizations?kind=medical" className="directory-chip">Клиники и медцентры</Link></nav>}
         <div className="directory-rail" aria-label="Категории услуг">
           <DirectoryChip active={selectedCategory === null} onClick={() => setSelectedCategory(null)}>Все услуги</DirectoryChip>
           {categoriesLoading ? <Skeleton className="h-11 w-64" /> : categories.map((category) => {
@@ -130,11 +141,11 @@ export default function HomePage() {
         {activeFilters.filter(([key]) => key !== "availableTodayOnly" && key !== "verifiedOnly").length > 0 && <div className="directory-quick-actions" aria-label="Выбранные фильтры">
           {activeFilters.filter(([key]) => key !== "availableTodayOnly" && key !== "verifiedOnly").map(([key, label]) => <DirectoryChip key={key} active onClick={() => setFilterState({ ...filterState, [key]: defaultFilterState[key] })}>{label}<X size={14} /></DirectoryChip>)}
         </div>}
-        <DirectoryResults label={selectedCategoryName || "Специалисты"} count={filteredMasters.length} loading={mastersLoading} view={viewMode} onView={setViewMode}>
-          {!compareMode && viewMode === "list" && allMasters.length > 1 && <button type="button" className="directory-clear" onClick={() => setCompareMode(true)}>Сравнить мастеров</button>}
+        <DirectoryResults label={selectedCategoryName || (organizations ? "Организации" : "Специалисты")} count={filteredMasters.length} loading={mastersLoading} view={viewMode} onView={setViewMode}>
+          {!compareMode && viewMode === "list" && contextMasters.length > 1 && <button type="button" className="directory-clear" onClick={() => setCompareMode(true)}>{organizations ? "Сравнить организации" : "Сравнить мастеров"}</button>}
         </DirectoryResults>
         {compareMode && <div className="master-comparison-tools">
-          <p role="status">Выбрано: {comparedMasters.length} из 3. Для сравнения нужны 2–3 мастера.</p>
+          <p role="status">Выбрано: {comparedMasters.length} из 3. Выберите от 2 до 3 профилей.</p>
           <div><button type="button" className="directory-primary" disabled={comparedMasters.length < 2} onClick={() => setShowComparison(true)}>Открыть сравнение ({comparedMasters.length})</button>
             <button type="button" className="directory-secondary" onClick={() => { setCompareMode(false); setComparisonIds([]); }}>Отмена сравнения</button></div>
         </div>}
@@ -154,18 +165,18 @@ export default function HomePage() {
             comparison={compareMode ? { selected: comparisonIds.includes(master.id), disabled: comparisonIds.length >= 3 && !comparisonIds.includes(master.id), onToggle: () => toggleComparison(master.id) } : undefined}
             onToggleFavorite={(event) => toggleFavorite(master.id, event)} />)}
         </div>) : <div className="directory-empty">
-          <Search size={28} /><h3>Подходящих мастеров пока нет</h3><p>Измените запрос или условия поиска. Также можно описать задачу и дождаться откликов.</p>
+          <Search size={28} /><h3>{organizations ? "Подходящих организаций пока нет" : "Подходящих специалистов пока нет"}</h3><p>Измените запрос или условия поиска.</p>
           <button type="button" className="directory-secondary" onClick={() => { clearFilters(); setSearchQuery(""); }}>Сбросить поиск и фильтры</button>
         </div>}
         {(hasActiveFilters || selectedCategory) && <button type="button" className="directory-clear mt-3" onClick={clearFilters}>Сбросить фильтры</button>}
-        {user?.role === "client" && recent.data.length > 0 && !searchQuery && <section className="mt-8" aria-label="Недавно просмотренные мастера">
+        {user?.role === "client" && recentInDirectory.length > 0 && !searchQuery && <section className="mt-8" aria-label={organizations ? "Недавно просмотренные организации" : "Недавно просмотренные специалисты"}>
           <div className="flex items-center justify-between"><h2 className="text-base font-semibold">Вы смотрели</h2><Link href="/saved?tab=recent" className="directory-clear">Вся история</Link></div>
-          <div className="directory-rail">{recent.data.slice(0, 6).map(({ master }) => <Link key={master.id} href={`/master/${master.id}`} className="directory-secondary shrink-0">{master.name}</Link>)}</div>
+          <div className="directory-rail">{recentInDirectory.slice(0, 6).map(({ master }) => <Link key={master.id} href={`/master/${master.id}`} className="directory-secondary shrink-0">{providerDisplayName(master)}</Link>)}</div>
         </section>}
       </main>
-      {showFilter && <FilterSheet value={filterState} onChange={setFilterState} onClose={() => setShowFilter(false)} masters={baseMasters}
+      {showFilter && <FilterSheet value={filterState} onChange={setFilterState} onClose={() => setShowFilter(false)} masters={baseMasters} directoryType={organizations ? "organization" : "master"}
         districts={districts} availableIds={availableIds} availabilityLoading={availability.isPending} />}
-      {showComparison && <MasterComparison masters={comparedMasters} onRemove={id => setComparisonIds(ids => ids.filter(value => value !== id))} onClose={() => setShowComparison(false)} />}
+      {showComparison && <MasterComparison masters={comparedMasters} directory={directory} onRemove={id => setComparisonIds(ids => ids.filter(value => value !== id))} onClose={() => setShowComparison(false)} />}
       {showBroadcast && <BroadcastModal initialCategory={broadcastCategory} initialDescription={searchQuery} initialDraft={resumedDraft ?? undefined}
         onClose={() => { setShowBroadcast(false); setBroadcastCategory(undefined); setResumedDraft(null); }} />}
       <ResponsivePanel open={showLocation} onOpenChange={setShowLocation} title="Выберите город" description="Каталог будет показывать специалистов в выбранном городе.">
