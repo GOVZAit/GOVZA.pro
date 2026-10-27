@@ -136,6 +136,7 @@ async function context(signedIn = false, dark = false) {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('http://127.0.0.1:4174/');
     const nav = page.getByRole('navigation', { name: 'Основные разделы' });
+    await nav.getByRole('link', { name: 'Услуги', exact: true }).waitFor();
     assert.deepEqual(await nav.getByRole('link').allTextContents(), ['Услуги', 'Заявки', 'Чаты', 'Профиль']);
     assert.equal(await nav.getByRole('link', { name: 'Заявки', exact: true }).getAttribute('href'), '/requests');
     assert.equal(await nav.getByRole('link', { name: 'Чаты', exact: true }).getAttribute('href'), '/messages');
@@ -144,6 +145,31 @@ async function context(signedIn = false, dark = false) {
     assert.equal(await services.getByRole('link', { name: 'Врачи' }).getAttribute('href'), '/doctors');
   });
   await ctx.close();
+  const registration = await context(false); const registrationPage = await registration.ctx.newPage();
+  registrationPage.setDefaultTimeout(5000);
+  await registrationPage.setViewportSize({ width: 390, height: 844 });
+  await check('registration name accepts typing after switching from login; forms remain isolated', async () => {
+    await registrationPage.goto('http://127.0.0.1:4174/auth');
+    await registrationPage.getByRole('button', { name: 'Регистрация', exact: true }).click();
+    const name = registrationPage.getByLabel('Имя', { exact: true });
+    // Type key by key: the former reused Controller discarded real keyboard input.
+    await name.pressSequentially('Тестовое имя');
+    assert.equal(await name.inputValue(), 'Тестовое имя');
+    await registrationPage.getByRole('button', { name: /Организация Компания или бригада/ }).click();
+    assert.equal(await registrationPage.getByLabel('Название организации', { exact: true }).inputValue(), 'Тестовое имя');
+    await registrationPage.getByRole('button', { name: 'Вход', exact: true }).click();
+    assert.equal(await registrationPage.getByLabel('Телефон или email', { exact: true }).inputValue(), '');
+    assert.equal(await registrationPage.getByLabel('Пароль', { exact: true }).inputValue(), '');
+    await registrationPage.getByRole('button', { name: 'Регистрация', exact: true }).click();
+    assert.equal(await registrationPage.getByLabel('Название организации', { exact: true }).inputValue(), 'Тестовое имя');
+    await registrationPage.getByRole('button', { name: /Клиент Ищу мастера/ }).click();
+    await registrationPage.getByLabel('Имя', { exact: true }).press('ControlOrMeta+A');
+    await registrationPage.getByLabel('Имя', { exact: true }).pressSequentially('Тестовое имя клиента');
+    assert.equal(await registrationPage.getByLabel('Имя', { exact: true }).inputValue(), 'Тестовое имя клиента');
+    await registrationPage.screenshot({ animations: 'disabled', path: `${output}/registration-name-390.png` });
+    assert.equal(registration.state.posts.length, 0, 'Typing must not create accounts');
+  });
+  await registration.ctx.close();
   const guest = await context(false); const guestPage = await guest.ctx.newPage(); guestPage.setDefaultTimeout(5000);
   await guestPage.setViewportSize({ width: 390, height: 844 });
   await check('guest describes task before login; login restores without automatic submission', async () => {
