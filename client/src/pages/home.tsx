@@ -17,6 +17,8 @@ import { useCatalogState } from "@/hooks/use-catalog-state";
 import { activeFilterEntries, normalizeSearch, searchMasters, sortMasters } from "@shared/catalog";
 import { cities, type Category, type Master } from "@shared/schema";
 import { clearRequestDraft, readRequestDraft } from "@/lib/request-draft";
+import productFeatures from "@shared/product-features.json";
+import { MasterComparison } from "@/components/master-comparison";
 
 const categoryIcons: Record<string, typeof PlugZap> = { Wrench: Droplets, Zap: PlugZap, Sparkles, Hammer, Palette, Car, Package: Truck, BookOpen: GraduationCap };
 function MasterCardSkeleton() {
@@ -49,6 +51,9 @@ export default function HomePage() {
   }, []);
   const [broadcastCategory, setBroadcastCategory] = useState<string | undefined>();
   const [showLocation, setShowLocation] = useState(false);
+  const [compareMode, setCompareMode] = useState(false);
+  const [comparisonIds, setComparisonIds] = useState<number[]>([]);
+  const [showComparison, setShowComparison] = useState(false);
   const [, navigate] = useLocation();
 
   const debouncedSearch = useDebounce(searchQuery, 300);
@@ -61,6 +66,8 @@ export default function HomePage() {
   });
 
   const { favorites, toggle: toggleFavorite, isPending: favoritePending } = useFavorites();
+  const comparedMasters = allMasters.filter(master => comparisonIds.includes(master.id));
+  const toggleComparison = (id: number) => setComparisonIds(ids => ids.includes(id) ? ids.filter(value => value !== id) : ids.length < 3 ? [...ids, id] : ids);
   const recent = useRecentMasters();
   const availability = useTodayAvailability();
   const { availableIds } = availability;
@@ -97,7 +104,7 @@ export default function HomePage() {
         testId="input-search" filterTestId="button-filter" suggestions={suggestions} />
       <main className="directory-container">
         <nav className="directory-services" aria-label="Другие услуги">
-          <Link href="/auto-parts"><Car size={18} aria-hidden="true" />Запчасти</Link>
+          {productFeatures.autoParts && <Link href="/auto-parts"><Car size={18} aria-hidden="true" />Запчасти</Link>}
           <Link href="/doctors">Врачи</Link>
           <Link href="/more">Все сервисы<ChevronRight size={16} aria-hidden="true" /></Link>
         </nav>
@@ -123,7 +130,14 @@ export default function HomePage() {
         {activeFilters.filter(([key]) => key !== "availableTodayOnly" && key !== "verifiedOnly").length > 0 && <div className="directory-quick-actions" aria-label="Выбранные фильтры">
           {activeFilters.filter(([key]) => key !== "availableTodayOnly" && key !== "verifiedOnly").map(([key, label]) => <DirectoryChip key={key} active onClick={() => setFilterState({ ...filterState, [key]: defaultFilterState[key] })}>{label}<X size={14} /></DirectoryChip>)}
         </div>}
-        <DirectoryResults label={selectedCategoryName || "Специалисты"} count={filteredMasters.length} loading={mastersLoading} view={viewMode} onView={setViewMode} />
+        <DirectoryResults label={selectedCategoryName || "Специалисты"} count={filteredMasters.length} loading={mastersLoading} view={viewMode} onView={setViewMode}>
+          {!compareMode && viewMode === "list" && allMasters.length > 1 && <button type="button" className="directory-clear" onClick={() => setCompareMode(true)}>Сравнить мастеров</button>}
+        </DirectoryResults>
+        {compareMode && <div className="master-comparison-tools">
+          <p role="status">Выбрано: {comparedMasters.length} из 3. Для сравнения нужны 2–3 мастера.</p>
+          <div><button type="button" className="directory-primary" disabled={comparedMasters.length < 2} onClick={() => setShowComparison(true)}>Открыть сравнение ({comparedMasters.length})</button>
+            <button type="button" className="directory-secondary" onClick={() => { setCompareMode(false); setComparisonIds([]); }}>Отмена сравнения</button></div>
+        </div>}
         {mastersError || (filterState.availableTodayOnly && availability.isError) ? <div className="directory-empty" role="alert">
           <Search size={28} /><h3>Не удалось обновить данные</h3><p>Проверьте соединение. Ваши фильтры сохранены.</p>
           <button type="button" className="directory-secondary" onClick={() => { void reloadMasters(); void availability.refetch(); }}>Повторить</button>
@@ -137,6 +151,7 @@ export default function HomePage() {
         </div> : <div className="directory-grid">
           {filteredMasters.map((master) => <MasterCard key={master.id} master={master} isFavorite={favorites.includes(master.id)}
             favoritePending={favoritePending(master.id)} availableToday={availableIds.has(master.id) ? availability.data?.providers[master.id] : undefined}
+            comparison={compareMode ? { selected: comparisonIds.includes(master.id), disabled: comparisonIds.length >= 3 && !comparisonIds.includes(master.id), onToggle: () => toggleComparison(master.id) } : undefined}
             onToggleFavorite={(event) => toggleFavorite(master.id, event)} />)}
         </div>) : <div className="directory-empty">
           <Search size={28} /><h3>Подходящих мастеров пока нет</h3><p>Измените запрос или условия поиска. Также можно описать задачу и дождаться откликов.</p>
@@ -150,6 +165,7 @@ export default function HomePage() {
       </main>
       {showFilter && <FilterSheet value={filterState} onChange={setFilterState} onClose={() => setShowFilter(false)} masters={baseMasters}
         districts={districts} availableIds={availableIds} availabilityLoading={availability.isPending} />}
+      {showComparison && <MasterComparison masters={comparedMasters} onRemove={id => setComparisonIds(ids => ids.filter(value => value !== id))} onClose={() => setShowComparison(false)} />}
       {showBroadcast && <BroadcastModal initialCategory={broadcastCategory} initialDescription={searchQuery} initialDraft={resumedDraft ?? undefined}
         onClose={() => { setShowBroadcast(false); setBroadcastCategory(undefined); setResumedDraft(null); }} />}
       <ResponsivePanel open={showLocation} onOpenChange={setShowLocation} title="Выберите город" description="Каталог будет показывать специалистов в выбранном городе.">

@@ -12,6 +12,7 @@ const output = process.env.UI_REPORT || '/tmp/govza-ui-report';
 fs.mkdirSync(output, { recursive: true });
 const root = path.resolve('dist/public');
 const results = []; let browser;
+const features = require('../shared/product-features.json');
 const server = http.createServer((req, res) => {
   let target = path.resolve(root, '.' + decodeURIComponent(new URL(req.url, 'http://localhost').pathname));
   if (!target.startsWith(root + path.sep) && target !== root) { res.writeHead(403).end(); return; }
@@ -23,7 +24,7 @@ async function check(name, fn) {
   try { await fn(); results.push({ name, status: 'passed' }); console.log('PASS', name); }
   catch (error) { results.push({ name, status: 'failed', error: error.message }); console.error('FAIL', name, error.message); }
 }
-async function context(signedIn = false, dark = false) {
+async function context(signedIn = false, dark = false, role = 'client') {
   const ctx = await browser.newContext({ serviceWorkers: 'block', colorScheme: dark ? 'dark' : 'light' });
   const state = { favorites: [], posts: [], failRequest: false, failMessage: false };
   await ctx.addInitScript(({ dark }) => {
@@ -49,7 +50,7 @@ async function context(signedIn = false, dark = false) {
       } else if (p === '/api/requests') { status = state.failRequest ? 500 : 200; data = { id: 991 }; }
       else if (p.startsWith('/api/messages/')) { status = state.failMessage ? 500 : 200; data = {}; }
       else data = {};
-    } else if (p === '/api/auth/me') data = { user: signedIn ? { id: 901, name: 'Тестовый клиент', role: 'client', email: 'fixture@example.invalid' } : null };
+    } else if (p === '/api/auth/me') data = { user: signedIn ? { id: 901, name: 'Тестовый клиент', role, email: 'fixture@example.invalid' } : null };
     else if (p === '/api/masters') data = fixture.masters;
     else if (p === '/api/categories') data = fixture.categories;
     else if (p === '/api/directory/doctors') data = fixture.doctors;
@@ -76,7 +77,7 @@ async function context(signedIn = false, dark = false) {
   const { ctx } = await context();
   const page = await ctx.newPage(); page.setDefaultTimeout(5000);
   const errors = []; page.on('pageerror', error => errors.push(error.message));
-  const pages = [['/', 'masters'], ['/doctors', 'doctors'], ['/auto-parts', 'parts'], ['/more', 'more'], ['/profile', 'profile']];
+  const pages = [['/', 'masters'], ['/doctors', 'doctors'], ['/auto-parts', features.autoParts ? 'parts' : 'parts-paused'], ['/more', 'more'], ['/profile', 'profile']];
   const sizes = [[320, 720], [390, 844], [430, 932], [768, 1024], [1024, 768], [1440, 1000]];
   for (const [width, height] of sizes) {
     await page.setViewportSize({ width, height });
@@ -86,7 +87,7 @@ async function context(signedIn = false, dark = false) {
       await page.screenshot({ animations: 'disabled', path: `${output}/${label}-${width}.png` });
       const dimensions = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, width: innerWidth }));
       assert.ok(dimensions.scroll <= dimensions.width + 1, JSON.stringify(dimensions));
-      if (label !== 'more' && label !== 'profile') {
+      if (label !== 'more' && label !== 'profile' && label !== 'parts-paused') {
         const box = await page.locator('.directory-search').boundingBox(); assert.equal(Math.round(box.height), 52);
         const inputSize = await page.locator('.directory-search input').evaluate(el => parseFloat(getComputedStyle(el).fontSize)); assert.ok(inputSize >= 16);
       }
@@ -99,7 +100,7 @@ async function context(signedIn = false, dark = false) {
   }
   for (const width of [390, 844, 1440]) {
     await page.setViewportSize({ width, height: width === 844 ? 390 : 844 });
-    for (const [url, id, label] of [['/', 'button-filter', 'masters'], ['/doctors', 'button-doctor-filters', 'doctors'], ['/auto-parts', 'auto-parts-filters', 'parts']]) await check(`${label}: ${width}px filter panel`, async () => {
+    for (const [url, id, label] of [['/', 'button-filter', 'masters'], ['/doctors', 'button-doctor-filters', 'doctors'], ...(features.autoParts ? [['/auto-parts', 'auto-parts-filters', 'parts']] : [])]) await check(`${label}: ${width}px filter panel`, async () => {
       await page.goto(`http://127.0.0.1:4174${url}`); await page.getByTestId(id).click();
       const dialog = page.getByRole('dialog'); await dialog.waitFor(); await page.waitForTimeout(250);
       await page.screenshot({ animations: 'disabled', path: `${output}/${label}-filter-${width}.png` });
@@ -123,11 +124,21 @@ async function context(signedIn = false, dark = false) {
     await page.getByTestId('doctor-filter-children').click(); await page.getByTestId('doctor-filter-apply').click();
     assert.equal(await page.locator('[data-testid^=doctor-card-]').count(), fixture.doctors.filter(d => d.acceptsChildren).length);
   });
-  await check('parts: draft and section retained on Apply', async () => {
+  if (features.autoParts) await check('parts: draft and section retained on Apply', async () => {
     await page.goto('http://127.0.0.1:4174/auto-parts'); await page.getByTestId('auto-parts-section-dismantler').click();
     await page.getByTestId('auto-parts-filters').click(); await page.getByTestId('auto-parts-brand').fill('Toyota'); await page.keyboard.press('Escape');
     await page.getByTestId('auto-parts-filters').click(); assert.equal(await page.getByTestId('auto-parts-brand').inputValue(), '');
     await page.getByTestId('auto-parts-filter-apply').click(); assert.equal(await page.getByTestId('auto-parts-section-dismantler').getAttribute('aria-pressed'), 'true');
+  });
+  else await check('paused parts routes show an explanation and menus hide entry points', async () => {
+    for (const path of ['/auto-parts', '/auto-parts/requests', '/auto-parts/requests/1']) {
+      await page.goto(`http://127.0.0.1:4174${path}`);
+      await page.getByRole('heading', { name: 'Раздел временно недоступен', level: 1 }).waitFor();
+      assert.equal(await page.getByRole('button', { name: /Запросить запчасть/ }).count(), 0);
+    }
+    await page.goto('http://127.0.0.1:4174/more');
+    await page.getByRole('heading', { name: 'Ещё', level: 1 }).waitFor();
+    assert.equal(await page.locator('a[href^="/auto-parts"]').count(), 0);
   });
   await check('menu: favorites link reaches saved masters', async () => {
     await page.goto('http://127.0.0.1:4174/more'); assert.equal(await page.getByRole('link', { name: /Избранное/ }).getAttribute('href'), '/saved');
@@ -141,10 +152,46 @@ async function context(signedIn = false, dark = false) {
     assert.equal(await nav.getByRole('link', { name: 'Заявки', exact: true }).getAttribute('href'), '/requests');
     assert.equal(await nav.getByRole('link', { name: 'Чаты', exact: true }).getAttribute('href'), '/messages');
     const services = page.getByRole('navigation', { name: 'Другие услуги' });
-    assert.equal(await services.getByRole('link', { name: 'Запчасти' }).getAttribute('href'), '/auto-parts');
+    if (features.autoParts) assert.equal(await services.getByRole('link', { name: 'Запчасти' }).getAttribute('href'), '/auto-parts');
+    else assert.equal(await services.getByRole('link', { name: 'Запчасти' }).count(), 0);
     assert.equal(await services.getByRole('link', { name: 'Врачи' }).getAttribute('href'), '/doctors');
   });
+  await check('compare up to three masters without navigating or losing selections', async () => {
+    await page.goto('http://127.0.0.1:4174/');
+    await page.getByRole('button', { name: 'Сравнить мастеров', exact: true }).click();
+    const selected = fixture.masters.slice(0, 3);
+    for (const master of selected) await page.getByTestId(`compare-master-${master.id}`).click();
+    assert.equal(new URL(page.url()).pathname, '/');
+    assert.equal(await page.getByTestId(`compare-master-${fixture.masters[3].id}`).isDisabled(), true);
+    for (const width of [390, 1440]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.getByRole('button', { name: 'Открыть сравнение (3)', exact: true }).click();
+      const dialog = page.getByRole('dialog'); await dialog.waitFor();
+      assert.equal(await dialog.locator('[data-testid^="comparison-row-"]').count(), 3);
+      for (const master of selected) assert.equal(await dialog.getByTestId(`comparison-row-${master.id}`).getByText(master.price, { exact: true }).count(), 1);
+      await page.waitForTimeout(250);
+      const bounds = await dialog.boundingBox();
+      assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= width + 1 && bounds.y + bounds.height <= 845);
+      await page.screenshot({ animations: 'disabled', path: `${output}/comparison-${width}.png` });
+      await dialog.getByRole('button', { name: 'Продолжить выбор', exact: true }).click();
+    }
+    await page.getByRole('button', { name: 'Открыть сравнение (3)', exact: true }).click();
+    await page.getByRole('button', { name: `Убрать из сравнения: ${selected[0].name}`, exact: true }).click();
+    assert.equal(await page.getByRole('dialog').locator('[data-testid^="comparison-row-"]').count(), 2);
+    await page.getByRole('button', { name: 'Продолжить выбор', exact: true }).click();
+    await page.getByRole('button', { name: 'Отмена сравнения', exact: true }).click();
+    assert.equal(await page.locator('[data-testid^="compare-master-"]').count(), 0);
+  });
   await ctx.close();
+  if (!features.autoParts) {
+    const org = await context(true, false, 'organization'); const orgPage = await org.ctx.newPage();
+    await check('organization parts route is paused and its navigation entry is hidden', async () => {
+      await orgPage.goto('http://127.0.0.1:4174/organization/parts-requests');
+      await orgPage.getByRole('heading', { name: 'Раздел временно недоступен', level: 1 }).waitFor();
+      assert.equal(await orgPage.locator('a[href="/organization/parts-requests"]').count(), 0);
+    });
+    await org.ctx.close();
+  }
   const registration = await context(false); const registrationPage = await registration.ctx.newPage();
   registrationPage.setDefaultTimeout(5000);
   await registrationPage.setViewportSize({ width: 390, height: 844 });

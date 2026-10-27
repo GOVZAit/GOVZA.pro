@@ -1,6 +1,7 @@
 import { CarFront, Stethoscope, ChevronRight, ClipboardList, Download, Heart, Landmark, MessageCircle, PackageSearch, ReceiptText } from "lucide-react";
 import { Link } from "wouter";
 import { DirectoryFrame } from "@/components/directory-layout";
+import productFeatures from "@shared/product-features.json";
 const personal = [
   { href: "/orders", icon: ReceiptText, title: "Мои заказы", description: "Статусы, переписка и завершённые работы" },
   { href: "/requests", icon: ClipboardList, title: "Мои заявки", description: "Предложения исполнителей по вашим задачам" },
@@ -17,7 +18,7 @@ const services = [
 export default function MorePage() {
   return <DirectoryFrame title="Ещё" description="Ваши дела и полезные сервисы.">
     <main className="directory-container directory-menu mt-3">
-      {[personal, services].map((items, i) => <section key={i}>
+      {[personal, services.filter(item => productFeatures.autoParts || !item.href.startsWith("/auto-parts"))].map((items, i) => <section key={i}>
         <h2 className="text-sm font-semibold mb-3 text-muted-foreground">{i === 0 ? "Ваши дела" : "Сервисы"}</h2>
         <div className="directory-menu-group">{items.map(({ href, icon: Icon, title, description }) => <Link key={href} href={href}>
           <Icon size={21} /><span className="min-w-0 flex-1"><strong className="text-[15px] font-semibold">{title}</strong><small>{description}</small></span><ChevronRight size={16} />
