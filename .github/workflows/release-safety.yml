@@ -53,5 +53,12 @@ jobs:
           JS
       - name: Verify libpq connection mapping and proxy boundary
         run: npx tsx script/test-backup-connection.ts && npx tsx script/test-transport-policy.ts
+      - name: Match PostgreSQL clients to restore fixture version
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-16
+          echo "/usr/lib/postgresql/16/bin" >> "$GITHUB_PATH"
+          /usr/lib/postgresql/16/bin/pg_dump --version
+          /usr/lib/postgresql/16/bin/pg_restore --version
       - name: Verify schema gate and restore fixtures into empty service database
         run: npx tsx script/test-release-database.ts
