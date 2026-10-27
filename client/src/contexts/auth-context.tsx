@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import type { PublicUser, UserRole } from "@shared/schema";
 import { queryClient } from "@/lib/queryClient";
+import { clearRequestDraft } from "@/lib/request-draft";
 
 interface AuthContextValue {
   user: PublicUser | null;
@@ -71,6 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
+    clearRequestDraft();
     const response = await fetch("/api/auth/logout", { method: "POST" });
     if (!response.ok) throw new Error("Не удалось завершить сессию. Повторите выход.");
     await queryClient.cancelQueries();

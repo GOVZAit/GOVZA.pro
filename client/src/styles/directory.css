@@ -120,7 +120,7 @@
 @keyframes govza-panel-enter { from { transform: translateY(16px); opacity: .6; } to { transform: none; opacity: 1; } }
 /* Navigation is outside content flow, never an horizontally scrolling strip. */
 .primary-bottom-nav { position: fixed; bottom: 0; inset-inline: 0; z-index: 50; background: hsl(var(--card) / .98); border-top: 1px solid hsl(var(--border)); padding: 4px max(8px, env(safe-area-inset-left)) max(4px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-right)); }
-.primary-bottom-nav-inner { max-width: 640px; margin: 0 auto; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.primary-bottom-nav-inner { max-width: 640px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .primary-nav-link { min-height: 60px; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 4px 2px; font-size: 11px; line-height: 1.3; font-weight: 600; color: hsl(var(--muted-foreground)); }
 .primary-nav-icon { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 30px; border-radius: 10px; position: relative; }
 .primary-nav-link.is-active { color: hsl(var(--primary)); }
@@ -177,6 +177,13 @@
 .directory-card-master .directory-location { padding-top: 0; border-top: 0; margin-top: 10px; }
 .directory-card-master .directory-card-bottom { margin-top: 12px; }
 .directory-card-master .directory-price { margin: 0; }
+.directory-services { display: flex; gap: 8px; align-items: center; overflow-x: auto; margin: 0 0 10px; }
+.directory-services a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px 12px; flex-shrink: 0; font-size: 14px; color: hsl(var(--primary)); border-radius: 12px; }
+.directory-services a:last-child { margin-left: auto; }
+.directory-request-link { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); border-color: transparent; }
+.directory-request-link small { color: inherit; opacity: 1; }
+.directory-request-link > svg { color: inherit; }
+.request-draft-note { font-size: 14px; line-height: 1.6; color: hsl(var(--muted-foreground)); margin-bottom: 16px; }
 @media (max-width: 719px) {
   .directory-topbar-inner { min-height: 56px; }
   .directory-intro { padding-block: 12px 4px; }

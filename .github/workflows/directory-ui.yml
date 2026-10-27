@@ -19,7 +19,7 @@ jobs:
       fail-fast: false
       matrix:
         browser: [chromium, webkit]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -30,7 +30,7 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npm run build && npm run smoke:build
+      - run: npm run check && node --import tsx script/test-request-draft.ts && npm run build && npm run smoke:build
       - name: Install isolated test tools
         env:
           UI_BROWSER: ${{ matrix.browser }}
