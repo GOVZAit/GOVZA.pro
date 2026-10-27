@@ -151,7 +151,7 @@ export default function AuthPage() {
         {returnToRequest && <p className="request-draft-note mt-4">После входа вернём вас к заявке. Отправить её сможете после проверки данных.</p>}
 
         {tab === "login" ? (
-          <Form {...loginForm}>
+          <Form key="login" {...loginForm}>
             <form onSubmit={loginForm.handleSubmit(onLogin)} className="mt-6 space-y-4">
               <div>
                 <h1 className="text-2xl font-extrabold tracking-[-0.04em]">Войдите в аккаунт</h1>
@@ -206,7 +206,7 @@ export default function AuthPage() {
             </form>
           </Form>
         ) : (
-          <Form {...registerForm}>
+          <Form key="register" {...registerForm}>
             <form onSubmit={registerForm.handleSubmit(onRegister)} className="mt-6 space-y-4">
               <div>
                 <h1 className="text-2xl font-extrabold tracking-[-0.04em]">Я регистрируюсь как</h1>
