@@ -130,6 +130,13 @@ jobs:
             package-lock.json
             audit-report.json
           retention-days: 1
+      - name: Verify patched dependencies
+        run: |
+          npm ci
+          npm audit --audit-level=low
+          npm run check
+          npm run build
+          npm run smoke:build
       - name: Remove temporary key
         if: always()
         run: rm -f ~/.ssh/id_ed25519
