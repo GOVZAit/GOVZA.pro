@@ -164,12 +164,10 @@ export default function AuthPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Телефон или email</FormLabel>
-                    <FormControl>
                       <div className="relative">
                         <AtSign className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input {...field} className={fieldShell} autoComplete="username" placeholder="+7 999 000-00-00 или name@mail.ru" />
+                        <FormControl><Input {...field} className={fieldShell} autoComplete="username" placeholder="+7 999 000-00-00 или name@mail.ru" /></FormControl>
                       </div>
-                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -181,10 +179,9 @@ export default function AuthPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Пароль</FormLabel>
-                    <FormControl>
                       <div className="relative">
                         <Lock className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input {...field} type={showPassword ? "text" : "password"} className={fieldShell} autoComplete="current-password" placeholder="Введите пароль" />
+                        <FormControl><Input {...field} type={showPassword ? "text" : "password"} className={fieldShell} autoComplete="current-password" placeholder="Введите пароль" /></FormControl>
                         <button
                           type="button"
                           onClick={() => setShowPassword((value) => !value)}
@@ -194,7 +191,6 @@ export default function AuthPage() {
                           {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
                       </div>
-                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -253,12 +249,10 @@ export default function AuthPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>{selectedRole === "organization" ? "Название организации" : "Имя"}</FormLabel>
-                    <FormControl>
                       <div className="relative">
                         <User className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input {...field} className={fieldShell} autoComplete="name" placeholder={selectedRole === "organization" ? "Название компании" : "Ваше имя"} />
+                        <FormControl><Input {...field} className={fieldShell} autoComplete="name" placeholder={selectedRole === "organization" ? "Название компании" : "Ваше имя"} /></FormControl>
                       </div>
-                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -270,12 +264,10 @@ export default function AuthPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Телефон или email</FormLabel>
-                    <FormControl>
                       <div className="relative">
                         <AtSign className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input {...field} className={fieldShell} autoComplete="username" placeholder="+7 999 000-00-00 или name@mail.ru" />
+                        <FormControl><Input {...field} className={fieldShell} autoComplete="username" placeholder="+7 999 000-00-00 или name@mail.ru" /></FormControl>
                       </div>
-                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -287,15 +279,13 @@ export default function AuthPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Пароль</FormLabel>
-                    <FormControl>
                       <div className="relative">
                         <Lock className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input {...field} type={showPassword ? "text" : "password"} className={fieldShell} autoComplete="new-password" placeholder="Минимум 6 символов" />
-                        <button type="button" onClick={() => setShowPassword((value) => !value)} className="absolute right-1.5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center text-muted-foreground">
+                        <FormControl><Input {...field} type={showPassword ? "text" : "password"} className={fieldShell} autoComplete="new-password" placeholder="Минимум 6 символов" /></FormControl>
+                        <button type="button" aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"} onClick={() => setShowPassword((value) => !value)} className="absolute right-1.5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center text-muted-foreground">
                           {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
                       </div>
-                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -307,15 +297,13 @@ export default function AuthPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Повторите пароль</FormLabel>
-                    <FormControl>
                       <div className="relative">
                         <Lock className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input {...field} type={showConfirm ? "text" : "password"} className={fieldShell} autoComplete="new-password" placeholder="Повторите пароль" />
-                        <button type="button" onClick={() => setShowConfirm((value) => !value)} className="absolute right-1.5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center text-muted-foreground">
+                        <FormControl><Input {...field} type={showConfirm ? "text" : "password"} className={fieldShell} autoComplete="new-password" placeholder="Повторите пароль" /></FormControl>
+                        <button type="button" aria-label={showConfirm ? "Скрыть повтор пароля" : "Показать повтор пароля"} onClick={() => setShowConfirm((value) => !value)} className="absolute right-1.5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center text-muted-foreground">
                           {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
                       </div>
-                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
