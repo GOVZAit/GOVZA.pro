@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+test "$(id -u)" = 0
+revision="${1:-}"
+archive="${2:-}"
+[[ "$revision" =~ ^[0-9a-f]{40}$ ]] || exit 2
+[[ "$archive" = "/home/serviceagg-deploy/incoming/$revision.tar.gz" ]] || exit 2
+test -f "$archive"
+test ! -L "$archive"
+exec 9>/run/lock/govza-deploy.lock
+flock -n 9
+release="/home/serviceagg/releases/$revision"
+test ! -e "$release"
+install -d -o serviceagg -g serviceagg -m 0750 /home/serviceagg/releases "$release"
+# Reject traversal, links and special files before unprivileged extraction.
+python3 - "$archive" <<'PY'
+import sys, tarfile
+from pathlib import PurePosixPath
+with tarfile.open(sys.argv[1], 'r:gz') as archive:
+    for item in archive:
+        path = PurePosixPath(item.name)
+        if path.is_absolute() or '..' in path.parts or not (item.isfile() or item.isdir()):
+            raise SystemExit('Unsafe release archive')
+PY
+# Copy into a root-owned directory so the deployment account cannot replace
+# the checked archive while it is being extracted.
+snapshot=$(mktemp /var/tmp/govza-release.XXXXXX.tar.gz)
+trap 'rm -f "$snapshot"' EXIT
+cp -- "$archive" "$snapshot"
+chown root:serviceagg "$snapshot"
+chmod 0640 "$snapshot"
+python3 - "$snapshot" <<'PY'
+import sys, tarfile
+from pathlib import PurePosixPath
+with tarfile.open(sys.argv[1], 'r:gz') as archive:
+    for item in archive:
+        path = PurePosixPath(item.name)
+        if path.is_absolute() or '..' in path.parts or not (item.isfile() or item.isdir()):
+            raise SystemExit('Unsafe release archive')
+PY
+sudo -u serviceagg tar --no-same-owner --no-same-permissions -xzf "$snapshot" -C "$release"
+sudo -u serviceagg -H bash -e -c '
+  set -a
+  . /etc/service-aggregator/app.env
+  set +a
+  cd "$1"
+  npm ci --include=dev
+  NODE_OPTIONS=--max-old-space-size=1400 npm run build
+  npm run smoke:build
+  npm run db:check-release
+' _ "$release"
+previous=$(readlink -f /home/serviceagg/current)
+ln -s "$release" /home/serviceagg/current.next
+mv -Tf /home/serviceagg/current.next /home/serviceagg/current
+rollback() {
+  ln -s "$previous" /home/serviceagg/current.rollback
+  mv -Tf /home/serviceagg/current.rollback /home/serviceagg/current
+  systemctl restart service-aggregator
+}
+if ! systemctl restart service-aggregator; then rollback; exit 1; fi
+healthy=false
+for attempt in $(seq 1 30); do
+  if curl -fsS http://127.0.0.1:8081/ -o /dev/null; then healthy=true; break; fi
+  sleep 2
+done
+if [ "$healthy" != true ]; then rollback; exit 1; fi
+rm -f -- "$archive"
+# TLS and Nginx configuration are maintained separately from app releases.
+echo "Deployed $revision"

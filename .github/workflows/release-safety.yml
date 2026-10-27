@@ -53,5 +53,13 @@ jobs:
           JS
       - name: Verify libpq connection mapping and proxy boundary
         run: npx tsx script/test-backup-connection.ts && npx tsx script/test-transport-policy.ts
+      - name: Match PostgreSQL clients to restore fixture version
+        run: |
+          install -d "$RUNNER_TEMP/pg16"
+          docker cp "${{ job.services.postgres.id }}:/usr/lib/postgresql/16/bin/pg_dump" "$RUNNER_TEMP/pg16/pg_dump"
+          docker cp "${{ job.services.postgres.id }}:/usr/lib/postgresql/16/bin/pg_restore" "$RUNNER_TEMP/pg16/pg_restore"
+          echo "$RUNNER_TEMP/pg16" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/pg16/pg_dump" --version
+          "$RUNNER_TEMP/pg16/pg_restore" --version
       - name: Verify schema gate and restore fixtures into empty service database
         run: npx tsx script/test-release-database.ts

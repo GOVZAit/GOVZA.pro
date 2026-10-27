@@ -14,6 +14,7 @@ concurrency:
 
 jobs:
   deploy:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 15
@@ -40,6 +41,8 @@ jobs:
         run: npm ci
       - name: Require clean known-vulnerability audit
         run: npm audit --audit-level=low
+      - name: Verify validation compatibility
+        run: npm run test:validation
       - name: Verify production build
         run: npm run check && npm run build
       - name: Smoke check production artifacts
@@ -54,7 +57,7 @@ jobs:
           mv "$RUNNER_TEMP/release.tar.gz" release.tar.gz
       - name: Configure SSH
         env:
-          DEPLOY_HOST: 194.67.92.216
+          DEPLOY_HOST: 89.111.169.155
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
         run: |
           install -d -m 0700 ~/.ssh
@@ -63,29 +66,20 @@ jobs:
           ssh-keyscan -T 10 -H "$DEPLOY_HOST" > ~/.ssh/known_hosts
       - name: Upload release
         env:
-          DEPLOY_HOST: 194.67.92.216
+          DEPLOY_HOST: 89.111.169.155
           DEPLOY_USER: serviceagg-deploy
         run: |
           scp -o BatchMode=yes release.tar.gz "$DEPLOY_USER@$DEPLOY_HOST:/home/serviceagg-deploy/incoming/$GITHUB_SHA.tar.gz"
       - name: Activate release with verified database backup
         env:
-          DEPLOY_HOST: 194.67.92.216
+          DEPLOY_HOST: 89.111.169.155
           DEPLOY_USER: serviceagg-deploy
         run: |
           set -euo pipefail
           ssh -o BatchMode=yes -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" \
-            "sudo -n /usr/local/sbin/deploy-service-aggregator '$GITHUB_SHA' '/home/serviceagg-deploy/incoming/$GITHUB_SHA.tar.gz'" </dev/null | tee "$RUNNER_TEMP/activation.log"
+            "sudo -n /usr/local/sbin/deploy-govza-8226803 '$GITHUB_SHA' '/home/serviceagg-deploy/incoming/$GITHUB_SHA.tar.gz'" </dev/null | tee "$RUNNER_TEMP/activation.log"
           grep -F 'Release database gate passed.' "$RUNNER_TEMP/activation.log"
           grep -F "Deployed $GITHUB_SHA" "$RUNNER_TEMP/activation.log"
-      - name: Preserve HTTPS after reverse-proxy release activation
-        env:
-          DEPLOY_HOST: 194.67.92.216
-          DEPLOY_USER: serviceagg-deploy
-        run: |
-          set -euo pipefail
-          if ! curl --fail --silent --show-error --max-time 15 https://govza.pro/ >/dev/null; then
-            ssh -o BatchMode=yes -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" 'sudo -n /usr/local/sbin/issue-govza-certificate' </dev/null
-          fi
       - name: Verify published build and denied anonymous admin access
         run: python3 script/verify-publication.py after
       - name: Remove temporary SSH key
