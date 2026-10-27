@@ -5,6 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { lazy, Suspense, useEffect } from "react";
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
+import productFeatures from "@shared/product-features.json";
+import PausedAutoPartsPage from "@/pages/paused-auto-parts";
 
 // Keep the main catalog eager for the fastest first paint.
 import HomePage from "@/pages/home";
@@ -137,7 +139,7 @@ function Router() {
         <Route path="/organization/messages/:id" component={DirectChatPage} />
         <Route path="/organization/messages" component={DirectChatsPage} />
         <Route path="/organization/profile" component={OrganizationProfilePage} />
-        <Route path="/organization/parts-requests" component={OrganizationPartsRequestsPage} />
+        <Route path="/organization/parts-requests" component={productFeatures.autoParts ? OrganizationPartsRequestsPage : PausedAutoPartsPage} />
         <Route path="/organization/onboarding" component={OrganizationOnboardingPage} />
 
         {/* Admin routes */}
@@ -156,9 +158,9 @@ function Router() {
         <Route path="/city" component={CityServicesPage} />
         <Route path="/contacts/services" component={CityServicesPage} />
         <Route path="/contacts/useful" component={ContactsPage} />
-        <Route path="/auto-parts/requests/:id" component={AutoPartsRequestDetailPage} />
-        <Route path="/auto-parts/requests" component={AutoPartsRequestsPage} />
-        <Route path="/auto-parts" component={AutoPartsPage} />
+        <Route path="/auto-parts/requests/:id" component={productFeatures.autoParts ? AutoPartsRequestDetailPage : PausedAutoPartsPage} />
+        <Route path="/auto-parts/requests" component={productFeatures.autoParts ? AutoPartsRequestsPage : PausedAutoPartsPage} />
+        <Route path="/auto-parts" component={productFeatures.autoParts ? AutoPartsPage : PausedAutoPartsPage} />
         <Route path="/doctors" component={DoctorsPage} />
         <Route path="/contacts" component={ContactsHubPage} />
         <Route path="/more" component={MorePage} />
@@ -189,8 +191,8 @@ function RouteEffects() {
         description: "Найдите мастера или организацию рядом, сравните услуги, отзывы и отправьте заявку в GOVZA.",
       } :
       location.startsWith("/auto-parts") ? {
-        title: "Автозапчасти — GOVZA мастера",
-        description: "Автомагазины и авторазборы: новые и Б/У автозапчасти в GOVZA мастера.",
+        title: productFeatures.autoParts ? "Автозапчасти — GOVZA мастера" : "Раздел временно недоступен — GOVZA",
+        description: productFeatures.autoParts ? "Автомагазины и авторазборы: новые и Б/У автозапчасти в GOVZA мастера." : "Раздел запчастей временно скрыт.",
       } :
       location.startsWith("/admin") ? {
         title: "Админ-панель — GOVZA мастера",

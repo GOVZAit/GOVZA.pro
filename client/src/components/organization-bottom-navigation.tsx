@@ -2,6 +2,7 @@ import { useLocation, Link } from "wouter";
 import { Home, ClipboardList, Building2, MessageCircle, PackageSearch } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUnreadCounts } from "@/hooks/use-unread-counts";
+import productFeatures from "@shared/product-features.json";
 
 const tabs = [
   { href: "/organization", label: "Главная", icon: Home },
@@ -18,7 +19,7 @@ export default function OrganizationBottomNavigation() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/70 bg-background/92 backdrop-blur-2xl safe-area-bottom shadow-[0_-18px_50px_-34px_hsl(var(--foreground)/0.34)] lg:bottom-5 lg:left-1/2 lg:right-auto lg:w-auto lg:-translate-x-1/2 lg:rounded-full lg:border">
       <div className="flex items-center justify-around px-2 py-1.5 max-w-lg mx-auto">
-        {tabs.map(({ href, label, icon: Icon }) => {
+        {tabs.filter(tab => productFeatures.autoParts || tab.href !== "/organization/parts-requests").map(({ href, label, icon: Icon }) => {
           const active = location === href || (href !== "/organization" && location.startsWith(href));
           return (
             <Link

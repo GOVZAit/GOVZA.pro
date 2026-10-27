@@ -10,9 +10,10 @@ interface MasterCardProps {
   onToggleFavorite: (e: React.MouseEvent) => void;
   favoritePending?: boolean;
   availableToday?: AvailabilityWindow;
+  comparison?: { selected: boolean; disabled: boolean; onToggle: () => void };
 }
 
-export function MasterCard({ master, isFavorite, onToggleFavorite, favoritePending, availableToday }: MasterCardProps) {
+export function MasterCard({ master, isFavorite, onToggleFavorite, favoritePending, availableToday, comparison }: MasterCardProps) {
   return <article data-testid={`master-card-${master.id}`} className="directory-card directory-card-master relative">
     <div className="directory-card-header">
       <Avatar className="directory-avatar"><AvatarImage src={master.avatar} alt="" className="object-cover" />
@@ -40,5 +41,11 @@ export function MasterCard({ master, isFavorite, onToggleFavorite, favoritePendi
       <div className="min-w-0"><span className="directory-price">{master.showPrices !== false ? master.price || "По договорённости" : "По договорённости"}</span></div>
       <Link href={`/master/${master.id}`} aria-label={`Профиль: ${master.name}`} className="directory-secondary after:absolute after:inset-0 after:rounded-[20px] after:content-['']">Профиль<ArrowUpRight size={16} aria-hidden="true" /></Link>
     </div>
+    {comparison && <button type="button" aria-pressed={comparison.selected} disabled={comparison.disabled}
+      aria-label={`${comparison.selected ? "Убрать из сравнения" : "Добавить к сравнению"}: ${master.name}`}
+      data-testid={`compare-master-${master.id}`} onClick={comparison.onToggle}
+      className="directory-secondary relative z-10 mt-3 w-full disabled:opacity-50">
+      {comparison.selected ? "Выбран для сравнения" : "Добавить к сравнению"}
+    </button>}
   </article>;
 }

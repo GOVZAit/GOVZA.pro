@@ -184,6 +184,14 @@
 .directory-request-link small { color: inherit; opacity: 1; }
 .directory-request-link > svg { color: inherit; }
 .request-draft-note { font-size: 14px; line-height: 1.6; color: hsl(var(--muted-foreground)); margin-bottom: 16px; }
+.master-comparison-tools { margin-bottom: 16px; padding: 12px 0; border-block: 1px solid hsl(var(--border)); }
+.master-comparison-tools p { font-size: 14px; line-height: 1.5; margin-bottom: 10px; }
+.master-comparison-tools > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.master-comparison-list > section { padding-bottom: 22px; margin-bottom: 22px; border-bottom: 1px solid hsl(var(--border)); }
+.master-comparison-facts { margin-block: 12px 16px; font-size: 14px; }
+.master-comparison-facts > div { display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 12px; margin-top: 10px; }
+.master-comparison-facts dt { color: hsl(var(--muted-foreground)); }
+.master-comparison-facts dd { overflow-wrap: anywhere; }
 @media (max-width: 719px) {
   .directory-topbar-inner { min-height: 56px; }
   .directory-intro { padding-block: 12px 4px; }
