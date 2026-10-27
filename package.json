@@ -13,10 +13,11 @@
     "db:push": "tsx script/check-release-db.ts",
     "test:product": "tsx script/test-product-maturity.ts",
     "test:product:db": "tsx script/test-product-memory-db.ts",
-    "db:check-release": "tsx script/check-release-db.ts"
+    "db:check-release": "tsx script/check-release-db.ts",
+    "test:validation": "tsx script/test-validation-dependencies.ts"
   },
   "dependencies": {
-    "@hookform/resolvers": "^3.10.0",
+    "@hookform/resolvers": "^5.2.2",
     "@jridgewell/trace-mapping": "^0.3.25",
     "@radix-ui/react-accordion": "^1.2.4",
     "@radix-ui/react-alert-dialog": "^1.1.7",

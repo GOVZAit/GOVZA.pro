@@ -55,7 +55,7 @@ export default function AuthPage() {
 
   const registerForm = useForm({
     resolver: zodResolver(registerFormSchema),
-    defaultValues: { name: "", identifier: "", password: "", confirmPassword: "", role: "client" as UserRole },
+    defaultValues: { name: "", identifier: "", password: "", confirmPassword: "", role: "client" as const },
   });
 
   const onLogin = async (values: { identifier: string; password: string }) => {
