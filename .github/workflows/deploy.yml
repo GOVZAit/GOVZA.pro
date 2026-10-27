@@ -74,18 +74,9 @@ jobs:
         run: |
           set -euo pipefail
           ssh -o BatchMode=yes -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" \
-            "sudo -n /usr/local/sbin/deploy-service-aggregator '$GITHUB_SHA' '/home/serviceagg-deploy/incoming/$GITHUB_SHA.tar.gz'" </dev/null | tee "$RUNNER_TEMP/activation.log"
+            "sudo -n /usr/local/sbin/deploy-govza-8226803 '$GITHUB_SHA' '/home/serviceagg-deploy/incoming/$GITHUB_SHA.tar.gz'" </dev/null | tee "$RUNNER_TEMP/activation.log"
           grep -F 'Release database gate passed.' "$RUNNER_TEMP/activation.log"
           grep -F "Deployed $GITHUB_SHA" "$RUNNER_TEMP/activation.log"
-      - name: Preserve HTTPS after reverse-proxy release activation
-        env:
-          DEPLOY_HOST: 89.111.169.155
-          DEPLOY_USER: serviceagg-deploy
-        run: |
-          set -euo pipefail
-          if ! curl --fail --silent --show-error --max-time 15 https://govza.pro/ >/dev/null; then
-            ssh -o BatchMode=yes -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" 'sudo -n /usr/local/sbin/issue-govza-certificate' </dev/null
-          fi
       - name: Verify published build and denied anonymous admin access
         run: python3 script/verify-publication.py after
       - name: Remove temporary SSH key
