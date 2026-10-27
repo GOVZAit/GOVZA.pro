@@ -41,7 +41,7 @@ function RequestStatus({ status }: { status: ServiceRequestView["status"] }) {
 
 function RequestCard({ request }: { request: ServiceRequestView }) {
   const [expanded, setExpanded] = useState(false);
-  const [showResponses, setShowResponses] = useState(request.status === "matched");
+  const [showResponses, setShowResponses] = useState(request.status === "matched" || (request.status === "open" && request.responses > 0));
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -70,6 +70,10 @@ function RequestCard({ request }: { request: ServiceRequestView }) {
   });
 
   const responses = responsesQuery.data ?? [];
+  // The strongest offer is surfaced first so the choice takes one glance.
+  const bestId = request.status === "open" && responses.length > 1
+    ? [...responses].sort((a, b) => b.rating - a.rating)[0]?.id
+    : undefined;
 
   return (
     <article className="premium-card overflow-hidden" data-testid={`card-request-${request.id}`}>
@@ -85,6 +89,11 @@ function RequestCard({ request }: { request: ServiceRequestView }) {
           <span className="shrink-0 text-[11px] text-muted-foreground">{request.postedAt}</span>
         </div>
 
+        {request.status === "open" && <div className="live-order" role="status" aria-live="polite">
+          <div className="live-order-row"><span className="pulse-dot" aria-hidden="true" />
+            <div className="min-w-0 flex-1"><strong>Ищем мастеров</strong>
+              <small>{request.responses === 0 ? "Заявку уже видят свободные мастера — первые отклики обычно приходят за 10–15 минут" : `Откликов: ${request.responses}. Можно выбрать сейчас или подождать ещё`}</small></div></div>
+        </div>}
         <p className={cn("text-sm leading-relaxed text-muted-foreground", !expanded && "line-clamp-2")}>{request.description}</p>
         {request.description.length > 120 && (
           <button type="button" onClick={() => setExpanded((value) => !value)} className="flex min-h-8 items-center gap-1 text-xs font-bold text-primary">
@@ -126,7 +135,8 @@ function RequestCard({ request }: { request: ServiceRequestView }) {
               {responses.map((response) => {
                 const selected = request.selectedResponseId === response.id || response.status === "selected";
                 return (
-                  <div key={response.id} className="space-y-3 p-4">
+                  <div key={response.id} className={cn("space-y-3 p-4", response.id === bestId && "bg-[hsl(var(--signal-soft))]")}>
+                    {response.id === bestId && <span className="directory-tag directory-available">Лучший рейтинг среди откликов</span>}
                     <div className="flex items-center gap-3">
                       {response.avatar ? (
                         <img src={response.avatar} alt="" className="h-12 w-12 rounded-2xl object-cover" />
@@ -145,7 +155,7 @@ function RequestCard({ request }: { request: ServiceRequestView }) {
                     </div>
                     <p className="text-sm leading-relaxed text-muted-foreground">{response.text}</p>
                     {selected ? (
-                      <div className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-emerald-500/10 px-3 text-sm font-bold text-emerald-700 dark:text-emerald-400">
+                      <div className="directory-available flex min-h-11 items-center justify-center gap-2 rounded-2xl px-3 text-sm font-bold">
                         <BadgeCheck className="h-4 w-4" /> Этот мастер выбран
                       </div>
                     ) : request.status === "open" ? (
@@ -153,7 +163,7 @@ function RequestCard({ request }: { request: ServiceRequestView }) {
                         type="button"
                         disabled={selectMutation.isPending}
                         onClick={() => selectMutation.mutate(response.id)}
-                        className="accent-gradient min-h-12 w-full rounded-2xl px-4 text-sm font-bold text-white disabled:opacity-50"
+                        className="directory-primary w-full disabled:opacity-50"
                       >
                         Выбрать мастера за {response.price}
                       </button>
