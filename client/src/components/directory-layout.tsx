@@ -22,15 +22,17 @@ interface FrameProps {
   onCityClick?: () => void;
   action?: ReactNode;
   serviceSection?: "specialists" | "doctors" | "organizations";
+  /** Large display headline for the main "what needs doing?" screen. */
+  hero?: boolean;
   children: ReactNode;
 }
-export function DirectoryFrame({ title, description, city, onCityClick, action, serviceSection, children }: FrameProps) {
+export function DirectoryFrame({ title, description, city, onCityClick, action, serviceSection, hero, children }: FrameProps) {
   return <div className="app-page directory-page">
     <DirectoryTopbar />
     {serviceSection && <div className="directory-container"><nav className="service-directory-nav" aria-label="Каталоги услуг">
       {([{ id: "specialists", href: "/", label: "Специалисты" }, { id: "doctors", href: "/doctors", label: "Врачи" }, { id: "organizations", href: "/organizations", label: "Организации" }] as const).map(item => <Link key={item.id} href={item.href} aria-current={serviceSection === item.id ? "page" : undefined}>{item.label}</Link>)}
     </nav></div>}
-    <header className="directory-container directory-intro">
+    <header className={cn("directory-container directory-intro", hero && "directory-intro-hero")}>
       <div className="directory-title-row">
         <h1>{title}</h1>
         {city && (onCityClick ? <button className="directory-city" type="button" onClick={(event) => { event.currentTarget.focus(); onCityClick(); }} aria-label={`Выбрать город: ${city}`}>

@@ -143,13 +143,14 @@ async function context(signedIn = false, dark = false, role = 'client') {
   await check('menu: favorites link reaches saved masters', async () => {
     await page.goto('http://127.0.0.1:4174/more'); assert.equal(await page.getByRole('link', { name: /Избранное/ }).getAttribute('href'), '/saved');
   });
-  await check('four primary destinations and service shortcuts remain reachable', async () => {
+  await check('primary destinations, new-request action and service shortcuts remain reachable', async () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('http://127.0.0.1:4174/');
     const nav = page.getByRole('navigation', { name: 'Основные разделы' });
-    await nav.getByRole('link', { name: 'Услуги', exact: true }).waitFor();
-    assert.deepEqual(await nav.getByRole('link').allTextContents(), ['Услуги', 'Заявки', 'Чаты', 'Профиль']);
-    assert.equal(await nav.getByRole('link', { name: 'Заявки', exact: true }).getAttribute('href'), '/requests');
+    await nav.getByRole('link', { name: 'Главная', exact: true }).waitFor();
+    assert.deepEqual(await nav.getByRole('link').allTextContents(), ['Главная', 'Заказы', 'Новая заявка', 'Чаты', 'Профиль']);
+    assert.equal(await nav.getByRole('link', { name: 'Заказы', exact: true }).getAttribute('href'), '/orders');
+    assert.equal(await nav.getByRole('link', { name: 'Новая заявка', exact: true }).getAttribute('href'), '/requests?new=1');
     assert.equal(await nav.getByRole('link', { name: 'Чаты', exact: true }).getAttribute('href'), '/messages');
     const services = page.getByRole('navigation', { name: 'Другие услуги' });
     if (features.autoParts) assert.equal(await services.getByRole('link', { name: 'Запчасти' }).getAttribute('href'), '/auto-parts');

@@ -25,7 +25,7 @@ export function OrderCard({ order, master, onLeaveReview, onOpenChat, onRepeatOr
   return (
     <div
       data-testid={`order-card-${order.id}`}
-      className="bg-card rounded-xl p-4"
+      className="bg-card rounded-[22px] p-4"
     >
       <div className="flex items-center gap-3 mb-3">
         <Avatar className="w-12 h-12 rounded-xl">
@@ -42,15 +42,29 @@ export function OrderCard({ order, master, onLeaveReview, onOpenChat, onRepeatOr
           variant={status.variant}
           className={
             order.status === 'completed'
-              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+              ? 'bg-muted text-foreground'
               : order.status === 'in_progress'
-              ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+              ? 'directory-available'
               : ''
           }
         >
           {status.label}
         </Badge>
       </div>
+
+      {(order.status === 'pending' || order.status === 'in_progress') && (
+        <div className="mb-3" aria-label="Этапы заказа">
+          <div className="order-steps" aria-hidden="true">
+            {[1, 2, 3, 4].map((step) => {
+              const done = order.status === 'pending' ? 1 : order.travelStatus === 'arrived' ? 4 : order.travelStatus === 'en_route' ? 3 : 2;
+              return <span key={step} className={step <= done ? 'is-done' : undefined} />;
+            })}
+          </div>
+          <ol className="order-steps-labels">
+            <li>Отправлен</li><li>Принят</li><li>В пути</li><li>На месте</li>
+          </ol>
+        </div>
+      )}
 
       <div className="flex items-center justify-between pt-3 border-t border-border">
         <span className="flex items-center gap-1.5 text-sm text-muted-foreground">

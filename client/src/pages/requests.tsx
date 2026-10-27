@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { useEffect, useState } from "react";
+import { useLocation, useSearch } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BadgeCheck, CheckCircle2, ChevronDown, ChevronUp, Clock,
@@ -11,6 +11,7 @@ import { BottomNavigation } from "@/components/bottom-navigation";
 import { BroadcastModal } from "@/components/broadcast-modal";
 import { EmptyState } from "@/components/empty-state";
 import { AppBrandHeader } from "@/components/app-brand-header";
+import { OrdersSwitch } from "@/components/orders-switch";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -40,7 +41,7 @@ function RequestStatus({ status }: { status: ServiceRequestView["status"] }) {
 
 function RequestCard({ request }: { request: ServiceRequestView }) {
   const [expanded, setExpanded] = useState(false);
-  const [showResponses, setShowResponses] = useState(request.status === "matched");
+  const [showResponses, setShowResponses] = useState(request.status === "matched" || (request.status === "open" && request.responses > 0));
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -69,6 +70,10 @@ function RequestCard({ request }: { request: ServiceRequestView }) {
   });
 
   const responses = responsesQuery.data ?? [];
+  // The strongest offer is surfaced first so the choice takes one glance.
+  const bestId = request.status === "open" && responses.length > 1
+    ? [...responses].sort((a, b) => b.rating - a.rating)[0]?.id
+    : undefined;
 
   return (
     <article className="premium-card overflow-hidden" data-testid={`card-request-${request.id}`}>
@@ -84,6 +89,11 @@ function RequestCard({ request }: { request: ServiceRequestView }) {
           <span className="shrink-0 text-[11px] text-muted-foreground">{request.postedAt}</span>
         </div>
 
+        {request.status === "open" && <div className="live-order" role="status" aria-live="polite">
+          <div className="live-order-row"><span className="pulse-dot" aria-hidden="true" />
+            <div className="min-w-0 flex-1"><strong>Ищем мастеров</strong>
+              <small>{request.responses === 0 ? "Заявку уже видят свободные мастера — первые отклики обычно приходят за 10–15 минут" : `Откликов: ${request.responses}. Можно выбрать сейчас или подождать ещё`}</small></div></div>
+        </div>}
         <p className={cn("text-sm leading-relaxed text-muted-foreground", !expanded && "line-clamp-2")}>{request.description}</p>
         {request.description.length > 120 && (
           <button type="button" onClick={() => setExpanded((value) => !value)} className="flex min-h-8 items-center gap-1 text-xs font-bold text-primary">
@@ -125,7 +135,8 @@ function RequestCard({ request }: { request: ServiceRequestView }) {
               {responses.map((response) => {
                 const selected = request.selectedResponseId === response.id || response.status === "selected";
                 return (
-                  <div key={response.id} className="space-y-3 p-4">
+                  <div key={response.id} className={cn("space-y-3 p-4", response.id === bestId && "bg-[hsl(var(--signal-soft))]")}>
+                    {response.id === bestId && <span className="directory-tag directory-available">Лучший рейтинг среди откликов</span>}
                     <div className="flex items-center gap-3">
                       {response.avatar ? (
                         <img src={response.avatar} alt="" className="h-12 w-12 rounded-2xl object-cover" />
@@ -144,7 +155,7 @@ function RequestCard({ request }: { request: ServiceRequestView }) {
                     </div>
                     <p className="text-sm leading-relaxed text-muted-foreground">{response.text}</p>
                     {selected ? (
-                      <div className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-emerald-500/10 px-3 text-sm font-bold text-emerald-700 dark:text-emerald-400">
+                      <div className="directory-available flex min-h-11 items-center justify-center gap-2 rounded-2xl px-3 text-sm font-bold">
                         <BadgeCheck className="h-4 w-4" /> Этот мастер выбран
                       </div>
                     ) : request.status === "open" ? (
@@ -152,7 +163,7 @@ function RequestCard({ request }: { request: ServiceRequestView }) {
                         type="button"
                         disabled={selectMutation.isPending}
                         onClick={() => selectMutation.mutate(response.id)}
-                        className="accent-gradient min-h-12 w-full rounded-2xl px-4 text-sm font-bold text-white disabled:opacity-50"
+                        className="directory-primary w-full disabled:opacity-50"
                       >
                         Выбрать мастера за {response.price}
                       </button>
@@ -173,7 +184,14 @@ function RequestCard({ request }: { request: ServiceRequestView }) {
 export default function RequestsPage() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
-  const [showCreate, setShowCreate] = useState(false);
+  const search = useSearch();
+  const [showCreate, setShowCreate] = useState(() => new URLSearchParams(search).get("new") === "1");
+  // The "+" in the bottom navigation links here with ?new=1, including when this page is already open.
+  useEffect(() => {
+    if (new URLSearchParams(search).get("new") !== "1") return;
+    setShowCreate(true);
+    navigate("/requests", { replace: true });
+  }, [search]);
 
   const { data: requests = [], isLoading, isError } = useQuery<ServiceRequestView[]>({
     queryKey: ["/api/requests"],
@@ -191,6 +209,7 @@ export default function RequestsPage() {
             action={<Button onClick={() => navigate("/auth")} className="rounded-2xl">Войти</Button>}
           />
         </main>
+        {showCreate && <BroadcastModal onClose={() => setShowCreate(false)} />}
         <BottomNavigation />
       </div>
     );
@@ -203,8 +222,8 @@ export default function RequestsPage() {
           <AppBrandHeader compact />
           <div className="mt-6 flex items-end justify-between gap-3">
             <div>
-              <h1 className="text-3xl font-extrabold tracking-[-0.04em]">Мои заявки</h1>
-              <p className="mt-1 text-sm text-muted-foreground">Смотрите отклики и выбирайте подходящего исполнителя.</p>
+              <h1 className="text-3xl font-extrabold tracking-[-0.04em]">Заказы</h1>
+              <OrdersSwitch current="requests" />
             </div>
             <Button size="icon" aria-label="Создать заявку" onClick={() => setShowCreate(true)} className="h-12 w-12 rounded-2xl shadow-sm">
               <Plus className="h-5 w-5" />
@@ -214,7 +233,6 @@ export default function RequestsPage() {
       </header>
 
       <main className="mx-auto max-w-4xl px-4 py-5">
-        <Link href="/orders" className="directory-secondary mb-4">Мои заказы</Link>
         {isLoading ? (
           <div className="grid gap-4 lg:grid-cols-2">{[1, 2, 3, 4].map((item) => <Skeleton key={item} className="h-56 rounded-[1.5rem]" />)}</div>
         ) : isError ? (

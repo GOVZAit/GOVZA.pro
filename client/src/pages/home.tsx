@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState, type SetStateAction } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { Car, Check, ChevronRight, Droplets, GraduationCap, Hammer, Palette, PlugZap, Search, Sparkles, Truck, X, Zap, Heart, CalendarCheck, BadgeCheck, Send } from "lucide-react";
+import { Car, Check, ChevronRight, Droplets, GraduationCap, Hammer, Palette, PlugZap, Search, Sparkles, Truck, X, Zap, Heart, CalendarCheck, BadgeCheck, Send, Clock } from "lucide-react";
+import { LiveOrderCard } from "@/components/live-order-card";
+import { intentExamples, readQueryIntent } from "@/lib/query-intent";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DirectoryFrame, DirectorySearch, DirectoryChip, DirectoryResults } from "@/components/directory-layout";
 import { ResponsivePanel } from "@/components/responsive-panel";
@@ -103,23 +105,63 @@ export default function HomePage({ directory = "specialists" }: { directory?: Pr
     ? categories.find((category) => category.id === selectedCategory)?.name
     : null;
 
+  const idle = !organizations && !searchQuery && selectedCategory === null;
+  const intent = useMemo(() => readQueryIntent(debouncedSearch, categories), [debouncedSearch, categories]);
+  const intentCategory = intent.category && intent.category.id !== selectedCategory ? intent.category : undefined;
+  const intentToday = intent.today && !filterState.availableTodayOnly;
+  const applyIntent = () => setCatalog((current) => ({
+    ...current, query: "",
+    category: intentCategory ? intentCategory.id : current.category,
+    filters: intentToday ? { ...current.filters, availableTodayOnly: true } : current.filters,
+  }));
+  const availableNow = useMemo(() => idle
+    ? contextMasters.filter((master) => master.isOnline || availableIds.has(master.id)).slice(0, 12)
+    : [], [idle, contextMasters, availableIds]);
+
   const activeFilters = activeFilterEntries(filterState);
   const hasActiveFilters = activeFilters.length > 0 || filterState.sortBy !== defaultFilterState.sortBy;
   const clearFilters = () => setCatalog((current) => ({ ...current, category: null, filters: { ...defaultFilterState } }));
 
   return (
-    <DirectoryFrame title={organizations ? "Организации" : "Специалисты"} description={organizations ? "Компании, бригады и сервисные центры." : "Частные специалисты и самозанятые."} serviceSection={directory} city={city} onCityClick={() => setShowLocation(true)}>
-      <DirectorySearch value={searchQuery} onChange={setSearchQuery} placeholder={organizations ? "Услуга или организация" : "Услуга или мастер"}
+    <DirectoryFrame title={organizations ? "Организации" : "Что нужно сделать?"} description={organizations ? "Компании, бригады и сервисные центры." : "Опишите задачу своими словами — покажем, кто свободен рядом."} hero={!organizations} serviceSection={directory} city={city} onCityClick={() => setShowLocation(true)}>
+      <DirectorySearch value={searchQuery} onChange={setSearchQuery} placeholder={organizations ? "Услуга или организация" : "Например: течёт кран сегодня"}
         onFilters={() => setShowFilter(true)} filtersOpen={showFilter}
         filterCount={activeFilters.length + (filterState.sortBy !== defaultFilterState.sortBy ? 1 : 0)}
         testId="input-search" filterTestId="button-filter" suggestions={suggestions} />
       <main className="directory-container">
+        {!organizations && (idle
+          ? <div className="intent-examples" aria-label="Примеры запросов">
+            {intentExamples.map((example) => <button key={example} type="button" onClick={() => setSearchQuery(example)}>{example}</button>)}
+          </div>
+          : (intentCategory || intentToday) && <div className="intent-panel" aria-label="Поняли так">
+            <span>Поняли так</span>
+            {intentCategory && <span className="intent-chip">{(() => { const Icon = categoryIcons[intentCategory.iconName] ?? Zap; return <Icon aria-hidden="true" />; })()}{intentCategory.name}</span>}
+            {intentToday && <span className="intent-chip"><Clock aria-hidden="true" />Свободны сегодня</span>}
+            <button type="button" className="directory-primary" onClick={applyIntent} data-testid="button-apply-intent">Показать<ChevronRight size={16} aria-hidden="true" /></button>
+          </div>)}
+        {!organizations && user?.role === "client" && <LiveOrderCard clientId={user.id} masters={allMasters} />}
         <nav className="directory-services" aria-label="Другие услуги">
           {productFeatures.autoParts && <Link href="/auto-parts"><Car size={18} aria-hidden="true" />Запчасти</Link>}
           <Link href="/more">Все сервисы<ChevronRight size={16} aria-hidden="true" /></Link>
         </nav>
         {organizations && <nav className="directory-rail" aria-label="Виды организаций"><Link href="/organizations" className="directory-chip is-selected" aria-current="page">Все организации</Link><Link href="/organizations?kind=medical" className="directory-chip">Клиники и медцентры</Link></nav>}
-        <div className="directory-rail" aria-label="Категории услуг">
+        {idle && availableNow.length > 0 && <section className="home-section" aria-label="Свободны сейчас">
+          <div className="home-section-head"><h2><span className="pulse-dot" aria-hidden="true" />Свободны сейчас</h2>
+            <button type="button" className="directory-clear" onClick={() => setFilterState({ ...filterState, availableTodayOnly: true })}>Все</button></div>
+          <div className="now-strip">{availableNow.map((master) => { const name = providerDisplayName(master); return <Link key={master.id} href={`/master/${master.id}`} className="now-card" data-testid={`now-master-${master.id}`}>
+            <span className="now-card-avatar" aria-hidden="true">{master.avatar ? <img src={master.avatar} alt="" /> : name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2)}</span>
+            <b>{name}</b><span>{master.category}{master.reviews > 0 ? ` · ★ ${master.rating.toFixed(1)}` : ""}</span>
+          </Link>; })}</div>
+        </section>}
+        {idle ? <section className="home-section" aria-label="Категории услуг">
+          <div className="home-section-head"><h2>Услуги</h2></div>
+          <div className="category-tiles">{categoriesLoading ? <Skeleton className="h-24 w-full rounded-[20px]" /> : categories.map((category) => {
+            const Icon = categoryIcons[category.iconName] ?? Zap;
+            return <button key={category.id} type="button" className="category-tile" onClick={() => setSelectedCategory(category.id)} data-testid={`category-chip-${category.id}`}>
+              <span><Icon size={20} aria-hidden="true" /></span><span>{category.name}</span>
+            </button>;
+          })}</div>
+        </section> : <div className="directory-rail" aria-label="Категории услуг">
           <DirectoryChip active={selectedCategory === null} onClick={() => setSelectedCategory(null)}>Все услуги</DirectoryChip>
           {categoriesLoading ? <Skeleton className="h-11 w-64" /> : categories.map((category) => {
             const Icon = categoryIcons[category.iconName] ?? Zap;
@@ -128,10 +170,10 @@ export default function HomePage({ directory = "specialists" }: { directory?: Pr
               <Icon aria-hidden="true" />{category.name}
             </DirectoryChip>;
           })}
-        </div>
+        </div>}
         <button type="button" className="directory-request-link" data-testid="button-broadcast"
           onClick={() => { setBroadcastCategory(selectedCategoryName ?? undefined); setShowBroadcast(true); }}>
-          <Send size={20} aria-hidden="true" /><span><strong>Создать заявку</strong><small>Опишите задачу — получите предложения</small></span><ChevronRight size={18} aria-hidden="true" />
+          <Send size={20} aria-hidden="true" /><span><strong>Не хотите выбирать? Создайте заявку</strong><small>Свободные мастера сами предложат цену и время</small></span><ChevronRight size={18} aria-hidden="true" />
         </button>
         <div className="directory-quick-actions directory-quick-filters" aria-label="Быстрые фильтры">
           <DirectoryChip active={filterState.availableTodayOnly} onClick={() => setFilterState({ ...filterState, availableTodayOnly: !filterState.availableTodayOnly })}><CalendarCheck aria-hidden="true" />Свободен сегодня</DirectoryChip>

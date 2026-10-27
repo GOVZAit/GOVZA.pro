@@ -313,8 +313,8 @@ export default function MasterProfilePage() {
             </Avatar>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <h1 className="text-2xl font-extrabold tracking-[-0.04em] break-words" data-testid="text-master-name">{displayName}</h1>
-                {master.verified && <Shield className="w-4 h-4 text-green-500 shrink-0" />}
+                <h1 className="display-face text-2xl font-semibold break-words" data-testid="text-master-name">{displayName}</h1>
+                {master.verified && <BadgeCheck className="w-5 h-5 text-primary shrink-0" aria-label="Профиль проверен" />}
               </div>
               <p className="text-muted-foreground text-sm mb-2">{master.category}</p>
               {master.companyName && !isOrganization && (
@@ -354,7 +354,7 @@ export default function MasterProfilePage() {
               </span>
             )}
             {todayAvailability?.status === "available" && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-400">
+              <span className="directory-tag directory-available rounded-full px-2.5 py-1">
                 Свободен сегодня {todayAvailability.fromTime}–{todayAvailability.toTime}
               </span>
             )}
@@ -439,21 +439,10 @@ export default function MasterProfilePage() {
             </div>
           )}
 
-          <div className={cn("grid gap-3 text-center", master.showPrices !== false ? "grid-cols-3" : "grid-cols-2")}>
-            <div className="bg-primary/10 rounded-xl py-3 px-2">
-              <p className="text-xl font-bold text-primary">{master.completedOrders}</p>
-              <p className="text-xs text-muted-foreground">заказов</p>
-            </div>
-            <div className="bg-green-500/10 rounded-xl py-3 px-2">
-              <p className="text-xl font-bold text-emerald-600 dark:text-green-400">{displayRating}</p>
-              <p className="text-xs text-muted-foreground">рейтинг</p>
-            </div>
-            {master.showPrices !== false && (
-              <div className="bg-amber-500/10 rounded-xl py-3 px-2">
-                <p className="text-xl font-bold text-amber-600 dark:text-amber-400">{master.price}</p>
-                <p className="text-xs text-muted-foreground">цена</p>
-              </div>
-            )}
+          <div className={cn("grid gap-2", master.showPrices !== false ? "grid-cols-3" : "grid-cols-2")}>
+            <div className="profile-stat"><b>{displayRating}</b><span>рейтинг</span></div>
+            <div className="profile-stat"><b>{master.completedOrders}</b><span>заказов</span></div>
+            {master.showPrices !== false && <div className="profile-stat"><b>{master.price}</b><span>цена</span></div>}
           </div>
 
           {master.verified && (
@@ -608,21 +597,48 @@ export default function MasterProfilePage() {
         )}
       </main>
 
-      {/* ── Action bar ──────────────────────────────────────────────────────── */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-border/70 bg-background/92 p-4 safe-area-pb shadow-[0_-18px_50px_-34px_hsl(var(--foreground)/0.34)] backdrop-blur-2xl">
+      {/* ── Action bar: call · chat · one primary action ─────────────────── */}
+      <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-border/70 bg-background/92 px-4 pt-3 pb-4 safe-area-pb backdrop-blur-2xl">
         <div className="max-w-lg mx-auto space-y-2">
-          {/* Call state banner */}
-          {callState.status !== 'active' && callState.status !== 'disabled' && (
-            <div className="text-center text-xs text-muted-foreground bg-muted rounded-2xl px-3 py-2">
-              {callState.status === 'offline' && `📵 ${callState.note}`}
-              {callState.status === 'outside_hours' && `🕐 ${callState.note}`}
-            </div>
+          {callState.status === 'offline' && <p className="text-center text-xs font-semibold text-muted-foreground">{callState.note}</p>}
+          {callState.status === 'outside_hours' && <p className="text-center text-xs font-semibold text-muted-foreground">{callState.note}</p>}
+          {callState.status === 'active' && revealPhone && (
+            <a href={`tel:${callState.phone}`} data-testid="link-call"
+              className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-muted px-3 text-sm font-bold">
+              <Phone className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span className="truncate">Позвонить: {callState.phone}</span>
+            </a>
           )}
 
+          <div className="profile-actions">
+            {callState.status === 'active' ? (
+              <button type="button" className="profile-icon-action" aria-label="Показать телефон" aria-expanded={revealPhone}
+                onClick={() => setRevealPhone(true)} data-testid="button-call">
+                <Phone className="h-5 w-5" aria-hidden="true" />
+              </button>
+            ) : callState.status === 'disabled' ? (
+              <button type="button" className="profile-icon-action" disabled aria-label="Звонки отключены" data-testid="button-call-disabled">
+                <PhoneOff className="h-5 w-5" aria-hidden="true" />
+              </button>
+            ) : (
+              <button type="button" className="profile-icon-action" disabled aria-label="Звонки сейчас недоступны" data-testid="button-call-unavailable">
+                <Phone className="h-5 w-5" aria-hidden="true" />
+              </button>
+            )}
+            <button type="button" className="profile-icon-action" aria-label="Написать" onClick={openDirectChat}
+              disabled={directChatMutation.isPending} data-testid="button-chat">
+              <MessageCircle className="h-5 w-5" aria-hidden="true" />
+            </button>
+            <button type="button" className="profile-book" onClick={() => setShowBooking(true)} data-testid="button-book">
+              <span>{isOrganization ? "Заказать услугу" : "Записаться"}</span>
+              {(todayAvailability || (master.showPrices !== false && master.price)) && <small>
+                {[todayAvailability ? `сегодня с ${todayAvailability.fromTime}` : "", master.showPrices !== false ? master.price : ""].filter(Boolean).join(" · ")}
+              </small>}
+            </button>
+          </div>
+
           {(user?.role === "client" || !user) && (
-            <Button
-              variant="outline"
-              className="h-11 w-full rounded-2xl border-primary/30 font-bold text-primary"
+            <button type="button" className="flex min-h-11 w-full items-center justify-center gap-2 text-sm font-bold text-primary"
               onClick={() => {
                 if (user?.role !== "client") {
                   navigate("/auth");
@@ -630,78 +646,11 @@ export default function MasterProfilePage() {
                 }
                 setShowInvite(true);
               }}
-              data-testid="button-invite-provider"
-            >
-              <Send className="mr-2 h-4 w-4" />
+              data-testid="button-invite-provider">
+              <Send className="h-4 w-4" aria-hidden="true" />
               Предложить заказ этому исполнителю
-            </Button>
+            </button>
           )}
-
-          {/* Primary CTA — full width */}
-          <Button
-            className="w-full rounded-2xl h-12 text-base font-semibold"
-            onClick={() => setShowBooking(true)}
-            data-testid="button-book"
-          >
-            {isOrganization ? "Заказать услугу" : "Записаться"}
-          </Button>
-
-          {/* Secondary actions */}
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              className="flex-1 rounded-2xl"
-              onClick={openDirectChat}
-              disabled={directChatMutation.isPending}
-              data-testid="button-chat"
-            >
-              <MessageCircle className="w-5 h-5 mr-2" />
-              Написать
-            </Button>
-
-            {callState.status === 'active' ? (
-              revealPhone ? (
-                <a
-                  href={`tel:${callState.phone}`}
-                  data-testid="link-call"
-                  className="flex-1 min-w-0 flex items-center justify-center gap-2 rounded-2xl border border-emerald-600 text-emerald-600 text-sm font-semibold px-2"
-                >
-                  <Phone className="w-4 h-4 shrink-0" />
-                  <span className="truncate">{callState.phone}</span>
-                </a>
-              ) : (
-                <Button
-                  variant="outline"
-                  className="flex-1 rounded-xl border-green-600 text-emerald-600 hover:bg-emerald-600/10"
-                  onClick={() => setRevealPhone(true)}
-                  data-testid="button-call"
-                >
-                  <Phone className="w-4 h-4 mr-2" />
-                  Позвонить
-                </Button>
-              )
-            ) : callState.status === 'disabled' ? (
-              <Button
-                variant="outline"
-                disabled
-                className="flex-1 rounded-xl opacity-50"
-                data-testid="button-call-disabled"
-              >
-                <PhoneOff className="w-4 h-4 mr-2" />
-                Звонки откл.
-              </Button>
-            ) : (
-              <Button
-                variant="outline"
-                disabled
-                className="flex-1 rounded-xl opacity-60"
-                data-testid="button-call-unavailable"
-              >
-                <Phone className="w-4 h-4 mr-2" />
-                Недоступен
-              </Button>
-            )}
-          </div>
         </div>
       </div>
     </div>
