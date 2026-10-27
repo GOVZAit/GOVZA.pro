@@ -1,4 +1,4 @@
-import { useMemo, useState, type SetStateAction } from "react";
+import { useEffect, useMemo, useState, type SetStateAction } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Car, Check, ChevronRight, Droplets, GraduationCap, Hammer, Palette, PlugZap, Search, Sparkles, Truck, X, Zap, Heart, CalendarCheck, BadgeCheck, Send } from "lucide-react";
@@ -16,6 +16,7 @@ import { useRecentMasters, useTodayAvailability } from "@/hooks/use-master-memor
 import { useCatalogState } from "@/hooks/use-catalog-state";
 import { activeFilterEntries, normalizeSearch, searchMasters, sortMasters } from "@shared/catalog";
 import { cities, type Category, type Master } from "@shared/schema";
+import { clearRequestDraft, readRequestDraft } from "@/lib/request-draft";
 
 const categoryIcons: Record<string, typeof PlugZap> = { Wrench: Droplets, Zap: PlugZap, Sparkles, Hammer, Palette, Car, Package: Truck, BookOpen: GraduationCap };
 function MasterCardSkeleton() {
@@ -37,7 +38,15 @@ export default function HomePage() {
   const setCity = (city: string) => setCatalog((current) => ({ ...current, city, filters: { ...current.filters, district: "all" } }));
   const setViewMode = (view: "list" | "map") => setCatalog((current) => ({ ...current, view }));
   const [showFilter, setShowFilter] = useState(false);
-  const [showBroadcast, setShowBroadcast] = useState(false);
+  const [resumedDraft, setResumedDraft] = useState(() => new URLSearchParams(window.location.search).get("compose") === "request" ? readRequestDraft() : null);
+  const [showBroadcast, setShowBroadcast] = useState(Boolean(resumedDraft));
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("compose") !== "request") return;
+    clearRequestDraft();
+    const url = new URL(window.location.href);
+    url.searchParams.delete("compose");
+    window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+  }, []);
   const [broadcastCategory, setBroadcastCategory] = useState<string | undefined>();
   const [showLocation, setShowLocation] = useState(false);
   const [, navigate] = useLocation();
@@ -81,12 +90,17 @@ export default function HomePage() {
   const clearFilters = () => setCatalog((current) => ({ ...current, category: null, filters: { ...defaultFilterState } }));
 
   return (
-    <DirectoryFrame title="Мастера" description="Найдите специалиста или опишите задачу." city={city} onCityClick={() => setShowLocation(true)}>
+    <DirectoryFrame title="Услуги рядом" description="Найдите специалиста или создайте заявку." city={city} onCityClick={() => setShowLocation(true)}>
       <DirectorySearch value={searchQuery} onChange={setSearchQuery} placeholder="Услуга или мастер"
         onFilters={() => setShowFilter(true)} filtersOpen={showFilter}
         filterCount={activeFilters.length + (filterState.sortBy !== defaultFilterState.sortBy ? 1 : 0)}
         testId="input-search" filterTestId="button-filter" suggestions={suggestions} />
       <main className="directory-container">
+        <nav className="directory-services" aria-label="Другие услуги">
+          <Link href="/auto-parts"><Car size={18} aria-hidden="true" />Запчасти</Link>
+          <Link href="/doctors">Врачи</Link>
+          <Link href="/more">Все сервисы<ChevronRight size={16} aria-hidden="true" /></Link>
+        </nav>
         <div className="directory-rail" aria-label="Категории услуг">
           <DirectoryChip active={selectedCategory === null} onClick={() => setSelectedCategory(null)}>Все услуги</DirectoryChip>
           {categoriesLoading ? <Skeleton className="h-11 w-64" /> : categories.map((category) => {
@@ -99,7 +113,7 @@ export default function HomePage() {
         </div>
         <button type="button" className="directory-request-link" data-testid="button-broadcast"
           onClick={() => { setBroadcastCategory(selectedCategoryName ?? undefined); setShowBroadcast(true); }}>
-          <Send size={20} aria-hidden="true" /><span><strong>Описать задачу</strong><small>Сравните предложения мастеров</small></span><ChevronRight size={18} aria-hidden="true" />
+          <Send size={20} aria-hidden="true" /><span><strong>Создать заявку</strong><small>Опишите задачу — получите предложения</small></span><ChevronRight size={18} aria-hidden="true" />
         </button>
         <div className="directory-quick-actions directory-quick-filters" aria-label="Быстрые фильтры">
           <DirectoryChip active={filterState.availableTodayOnly} onClick={() => setFilterState({ ...filterState, availableTodayOnly: !filterState.availableTodayOnly })}><CalendarCheck aria-hidden="true" />Свободен сегодня</DirectoryChip>
@@ -136,8 +150,8 @@ export default function HomePage() {
       </main>
       {showFilter && <FilterSheet value={filterState} onChange={setFilterState} onClose={() => setShowFilter(false)} masters={baseMasters}
         districts={districts} availableIds={availableIds} availabilityLoading={availability.isPending} />}
-      {showBroadcast && <BroadcastModal initialCategory={broadcastCategory} initialDescription={searchQuery}
-        onClose={() => { setShowBroadcast(false); setBroadcastCategory(undefined); }} />}
+      {showBroadcast && <BroadcastModal initialCategory={broadcastCategory} initialDescription={searchQuery} initialDraft={resumedDraft ?? undefined}
+        onClose={() => { setShowBroadcast(false); setBroadcastCategory(undefined); setResumedDraft(null); }} />}
       <ResponsivePanel open={showLocation} onOpenChange={setShowLocation} title="Выберите город" description="Каталог будет показывать специалистов в выбранном городе.">
         <div className="space-y-2">{cities.map((item) => <button type="button" key={item} onClick={() => { setCity(item); setShowLocation(false); }}
           aria-pressed={city === item} className="directory-secondary w-full justify-between">{item}{city === item && <Check size={18} />}</button>)}</div>

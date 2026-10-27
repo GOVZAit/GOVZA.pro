@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, MessageCircle, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/auth-context";
 import MasterBottomNavigation from "@/components/master-bottom-navigation";
 import OrganizationBottomNavigation from "@/components/organization-bottom-navigation";
+import { BottomNavigation } from "@/components/bottom-navigation";
 import type { DirectConversationView } from "@shared/direct-chat-schema";
 
 function formatWhen(value?: string) {
@@ -47,7 +48,7 @@ export default function DirectChatsPage() {
       ? "/master/messages"
       : "/messages";
 
-  const title = user?.role === "client" ? "Сообщения" : "Сообщения клиентов";
+  const title = user?.role === "client" ? "Чаты" : "Сообщения клиентов";
   const description = user?.role === "client"
     ? "Диалоги с мастерами и организациями GOVZA"
     : "Прямые обращения клиентов до и вне заказа";
@@ -74,6 +75,7 @@ export default function DirectChatsPage() {
       </header>
 
       <main className="mx-auto max-w-2xl space-y-3 px-4 py-5">
+        {user?.role === "client" && <Link href="/orders" className="directory-secondary w-full justify-between">Переписка по заказам<ChevronRight size={18} aria-hidden="true" /></Link>}
         {isLoading ? (
           <>
             <Skeleton className="h-20 rounded-2xl" />
@@ -136,6 +138,7 @@ export default function DirectChatsPage() {
 
       {user?.role === "master" && <MasterBottomNavigation />}
       {user?.role === "organization" && <OrganizationBottomNavigation />}
+      {user?.role === "client" && <BottomNavigation />}
     </div>
   );
 }

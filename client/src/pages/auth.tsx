@@ -14,6 +14,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { registerSchema, loginSchema, type UserRole } from "@shared/schema";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { clearRequestDraft, readRequestDraft } from "@/lib/request-draft";
 
 const registerFormSchema = registerSchema
   .extend({ confirmPassword: z.string().min(1, "Повторите пароль") })
@@ -37,6 +38,7 @@ const roles: Array<{
 
 export default function AuthPage() {
   const search = useSearch();
+  const returnToRequest = new URLSearchParams(search).get("next") === "request";
   const initialTab: Tab = search.includes("tab=register") ? "register" : "login";
   const [tab, setTab] = useState<Tab>(initialTab);
   const [, navigate] = useLocation();
@@ -62,6 +64,11 @@ export default function AuthPage() {
     setError("");
     try {
       const loggedUser = await login(values.identifier, values.password);
+      if (returnToRequest && loggedUser.role === "client" && readRequestDraft()) {
+        navigate("/?compose=request");
+        return;
+      }
+      clearRequestDraft();
       navigate(loggedUser.role === "master" ? "/master" : loggedUser.role === "organization" ? "/organization" : "/profile");
     } catch (e: any) {
       setError(e.message);
@@ -82,6 +89,11 @@ export default function AuthPage() {
           ? "Аккаунт создан по номеру телефона."
           : "Аккаунт создан.";
       toast({ title: "Добро пожаловать в GOVZA pro", description });
+      if (returnToRequest && result.user.role === "client" && readRequestDraft()) {
+        navigate("/?compose=request");
+        return;
+      }
+      clearRequestDraft();
       navigate(result.user.role === "master"
         ? "/master/onboarding"
         : result.user.role === "organization"
@@ -136,6 +148,7 @@ export default function AuthPage() {
             {error}
           </div>
         )}
+        {returnToRequest && <p className="request-draft-note mt-4">После входа вернём вас к заявке. Отправить её сможете после проверки данных.</p>}
 
         {tab === "login" ? (
           <Form {...loginForm}>

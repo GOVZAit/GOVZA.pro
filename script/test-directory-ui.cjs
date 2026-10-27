@@ -40,7 +40,10 @@ async function context(signedIn = false, dark = false) {
     let data = [], status = 200;
     if (req.method() !== 'GET') {
       state.posts.push({ path: p, method: req.method(), body: req.postDataJSON() });
-      if (p.startsWith('/api/favorites/')) {
+      if (p === '/api/auth/login') {
+        signedIn = true;
+        data = { user: { id: 901, name: 'Тестовый клиент', role: 'client', email: 'fixture@example.invalid' } };
+      } else if (p.startsWith('/api/favorites/')) {
         const id = Number(p.split('/').at(-1)); state.favorites = req.method() === 'DELETE' ? state.favorites.filter(x => x !== id) : [...state.favorites, id];
         data = {};
       } else if (p === '/api/requests') { status = state.failRequest ? 500 : 200; data = { id: 991 }; }
@@ -129,7 +132,43 @@ async function context(signedIn = false, dark = false) {
   await check('menu: favorites link reaches saved masters', async () => {
     await page.goto('http://127.0.0.1:4174/more'); assert.equal(await page.getByRole('link', { name: /Избранное/ }).getAttribute('href'), '/saved');
   });
+  await check('four primary destinations and service shortcuts remain reachable', async () => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('http://127.0.0.1:4174/');
+    const nav = page.getByRole('navigation', { name: 'Основные разделы' });
+    assert.deepEqual(await nav.getByRole('link').allTextContents(), ['Услуги', 'Заявки', 'Чаты', 'Профиль']);
+    assert.equal(await nav.getByRole('link', { name: 'Заявки', exact: true }).getAttribute('href'), '/requests');
+    assert.equal(await nav.getByRole('link', { name: 'Чаты', exact: true }).getAttribute('href'), '/messages');
+    const services = page.getByRole('navigation', { name: 'Другие услуги' });
+    assert.equal(await services.getByRole('link', { name: 'Запчасти' }).getAttribute('href'), '/auto-parts');
+    assert.equal(await services.getByRole('link', { name: 'Врачи' }).getAttribute('href'), '/doctors');
+  });
   await ctx.close();
+  const guest = await context(false); const guestPage = await guest.ctx.newPage(); guestPage.setDefaultTimeout(5000);
+  await guestPage.setViewportSize({ width: 390, height: 844 });
+  await check('guest describes task before login; login restores without automatic submission', async () => {
+    await guestPage.goto('http://127.0.0.1:4174/');
+    await guestPage.getByTestId('button-broadcast').click();
+    await guestPage.getByTestId('category-1').click();
+    await guestPage.getByTestId('button-next-category').click();
+    await guestPage.getByTestId('input-description').fill('Заменить смеситель на кухне');
+    await guestPage.getByRole('button', { name: 'Сохранить и войти' }).click();
+    await guestPage.getByRole('heading', { name: 'Войдите в аккаунт' }).waitFor();
+    await guestPage.reload();
+    await guestPage.getByLabel('Телефон или email', { exact: true }).fill('fixture@example.invalid');
+    await guestPage.getByLabel('Пароль', { exact: true }).fill('fixture-password');
+    await guestPage.getByRole('button', { name: 'Войти', exact: true }).click();
+    await guestPage.getByTestId('input-description').waitFor();
+    assert.equal(await guestPage.getByTestId('input-description').inputValue(), 'Заменить смеситель на кухне');
+    assert.equal(guest.state.posts.filter(p => p.path === '/api/requests').length, 0);
+    await guestPage.screenshot({ animations: 'disabled', path: `${output}/request-restored-390.png` });
+    await guestPage.getByTestId('button-next-details').click();
+    await guestPage.getByTestId('input-location').fill('Грозный, тестовый адрес');
+    await guestPage.getByTestId('button-submit-request').click();
+    await guestPage.getByRole('heading', { name: 'Заявка отправлена' }).waitFor();
+    assert.equal(guest.state.posts.filter(p => p.path === '/api/requests').length, 1);
+  });
+  await guest.ctx.close();
   const signed = await context(true); const userPage = await signed.ctx.newPage(); userPage.setDefaultTimeout(5000); await userPage.setViewportSize({ width: 390, height: 844 });
   await check('request: fixed footer, back preserves fields, error keeps draft', async () => {
     await userPage.goto('http://127.0.0.1:4174/'); await userPage.getByTestId('button-broadcast').click();

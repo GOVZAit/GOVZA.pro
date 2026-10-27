@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BadgeCheck, CheckCircle2, ChevronDown, ChevronUp, Clock,
@@ -206,7 +206,7 @@ export default function RequestsPage() {
               <h1 className="text-3xl font-extrabold tracking-[-0.04em]">Мои заявки</h1>
               <p className="mt-1 text-sm text-muted-foreground">Смотрите отклики и выбирайте подходящего исполнителя.</p>
             </div>
-            <Button size="icon" onClick={() => setShowCreate(true)} className="h-12 w-12 rounded-2xl shadow-sm">
+            <Button size="icon" aria-label="Создать заявку" onClick={() => setShowCreate(true)} className="h-12 w-12 rounded-2xl shadow-sm">
               <Plus className="h-5 w-5" />
             </Button>
           </div>
@@ -214,6 +214,7 @@ export default function RequestsPage() {
       </header>
 
       <main className="mx-auto max-w-4xl px-4 py-5">
+        <Link href="/orders" className="directory-secondary mb-4">Мои заказы</Link>
         {isLoading ? (
           <div className="grid gap-4 lg:grid-cols-2">{[1, 2, 3, 4].map((item) => <Skeleton key={item} className="h-56 rounded-[1.5rem]" />)}</div>
         ) : isError ? (
