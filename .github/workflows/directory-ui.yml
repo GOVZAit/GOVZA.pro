@@ -30,7 +30,7 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npm run check && node --import tsx script/test-request-draft.ts && npm run build && npm run smoke:build
+      - run: npm run check && node --import tsx script/test-request-draft.ts && node --import tsx script/test-service-directories.ts && npm run build && npm run smoke:build
       - name: Install isolated test tools
         env:
           UI_BROWSER: ${{ matrix.browser }}

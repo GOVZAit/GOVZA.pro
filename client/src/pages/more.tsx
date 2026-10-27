@@ -1,4 +1,4 @@
-import { CarFront, Stethoscope, ChevronRight, ClipboardList, Download, Heart, Landmark, MessageCircle, PackageSearch, ReceiptText } from "lucide-react";
+import { Building2, CarFront, Stethoscope, ChevronRight, ClipboardList, Download, Heart, Landmark, MessageCircle, PackageSearch, ReceiptText } from "lucide-react";
 import { Link } from "wouter";
 import { DirectoryFrame } from "@/components/directory-layout";
 import productFeatures from "@shared/product-features.json";
@@ -9,6 +9,7 @@ const personal = [
   { href: "/saved", icon: Heart, title: "Избранное", description: "Сохранённые и просмотренные специалисты" },
 ];
 const services = [
+  { href: "/organizations", icon: Building2, title: "Организации", description: "Компании, бригады, клиники и сервисные центры" },
   { href: "/auto-parts", icon: CarFront, title: "Запчасти", description: "Магазины и авторазборы" },
   { href: "/doctors", icon: Stethoscope, title: "Врачи", description: "Специалисты и клиники" },
   { href: "/contacts", icon: Landmark, title: "Город и контакты", description: "Службы, организации, телефоны и адреса" },

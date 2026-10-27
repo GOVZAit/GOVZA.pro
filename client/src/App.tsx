@@ -22,6 +22,7 @@ const ContactsPage = lazy(() => import("@/pages/contacts"));
 const ContactsHubPage = lazy(() => import("@/pages/contacts-hub"));
 const MorePage = lazy(() => import("@/pages/more"));
 const DoctorsPage = lazy(() => import("@/pages/doctors"));
+const OrganizationsPage = lazy(() => import("@/pages/organizations"));
 const AutoPartsPage = lazy(() => import("@/pages/auto-parts"));
 const AutoPartsRequestsPage = lazy(() => import("@/pages/auto-parts-requests"));
 const AutoPartsRequestDetailPage = lazy(() => import("@/pages/auto-parts-request-detail"));
@@ -146,7 +147,8 @@ function Router() {
         <Route path="/admin" component={AdminDashboardPage} />
 
         {/* Client routes */}
-        <Route path="/" component={HomePage} />
+        <Route path="/"><HomePage /></Route>
+        <Route path="/organizations" component={OrganizationsPage} />
         <Route path="/master/:id" component={MasterProfilePage} />
         <Route path="/requests" component={RequestsPage} />
         <Route path="/orders/:id/chat" component={OrderChatPage} />
@@ -187,8 +189,11 @@ function RouteEffects() {
 
     const metadata =
       location === "/" ? {
-        title: "GOVZA мастера — мастера рядом",
-        description: "Найдите мастера или организацию рядом, сравните услуги, отзывы и отправьте заявку в GOVZA.",
+        title: "Специалисты — GOVZA",
+        description: "Частные специалисты и самозанятые рядом: услуги, цены и заявки в GOVZA.",
+      } : location === "/organizations" ? {
+        title: "Организации — GOVZA",
+        description: "Компании, бригады, клиники и сервисные центры в GOVZA.",
       } :
       location.startsWith("/auto-parts") ? {
         title: productFeatures.autoParts ? "Автозапчасти — GOVZA мастера" : "Раздел временно недоступен — GOVZA",

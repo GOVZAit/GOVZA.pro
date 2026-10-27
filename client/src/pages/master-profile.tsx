@@ -21,6 +21,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { executorTypeLabels } from "@shared/schema";
+import { isOrganizationProfile, providerDisplayName } from "@shared/provider-directory";
 import type { Master } from "@shared/schema";
 import type { MasterReviewSummary } from "@shared/order-review-schema";
 import type { AvailabilityDayView } from "@shared/provider-engagement-schema";
@@ -180,7 +181,7 @@ export default function MasterProfilePage() {
   const shareProfile = async () => {
     if (!master) return;
     const url = new URL(`/master/${masterId}`, window.location.origin).href;
-    const title = `${master.name} — GOVZA мастера`;
+    const title = `${providerDisplayName(master)} — GOVZA мастера`;
 
     try {
       if (navigator.share) {
@@ -245,7 +246,8 @@ export default function MasterProfilePage() {
     );
   }
 
-  const isOrganization = master.providerType === "organization";
+  const isOrganization = isOrganizationProfile(master);
+  const displayName = providerDisplayName(master);
   const verifiedReviews = reviewSummary?.reviews.map((review) => ({
     name: review.clientName,
     avatar: "",
@@ -286,7 +288,7 @@ export default function MasterProfilePage() {
 
       <header className="sticky top-0 z-40 bg-background/92 backdrop-blur-2xl border-b border-border/70 px-4 py-3 safe-area-pt">
         <div className="flex items-center gap-4 max-w-lg mx-auto">
-          <Button variant="ghost" size="icon" className="w-11 h-11" aria-label="Назад" onClick={() => navigate('/')} data-testid="button-back">
+          <Button variant="ghost" size="icon" className="w-11 h-11" aria-label="Назад" onClick={() => navigate(isOrganization ? '/organizations' : '/')} data-testid="button-back">
             <ArrowLeft className="w-6 h-6" />
           </Button>
           <span className="font-semibold">{isOrganization ? "Профиль организации" : "Профиль мастера"}</span>
@@ -311,11 +313,11 @@ export default function MasterProfilePage() {
             </Avatar>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <h1 className="text-2xl font-extrabold tracking-[-0.04em] truncate" data-testid="text-master-name">{master.name}</h1>
+                <h1 className="text-2xl font-extrabold tracking-[-0.04em] break-words" data-testid="text-master-name">{displayName}</h1>
                 {master.verified && <Shield className="w-4 h-4 text-green-500 shrink-0" />}
               </div>
               <p className="text-muted-foreground text-sm mb-2">{master.category}</p>
-              {master.companyName && (
+              {master.companyName && !isOrganization && (
                 <div
                   className="inline-flex items-center gap-1 max-w-full bg-primary/10 text-primary rounded-full px-2 py-0.5 text-xs font-medium mb-2"
                   data-testid="text-master-company"

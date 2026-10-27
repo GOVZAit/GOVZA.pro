@@ -1,4 +1,5 @@
 import type { ExecutorType, Master } from "./schema";
+import { isOrganizationProfile } from "./provider-directory";
 
 export type SortBy = "relevance" | "rating" | "reviews" | "price_asc" | "price_desc" | "distance" | "orders";
 export interface FilterState {
@@ -126,7 +127,7 @@ export function applyMasterFilters(masters: Master[], state: FilterState, availa
     if (state.availableTodayOnly && !availableIds.has(master.id)) return false;
     if (state.topOnly && !master.topMaster) return false;
     if (state.executorType !== "all" && (master.executorType ?? "private") !== state.executorType) return false;
-    if (state.providerType !== "all" && (master.providerType ?? "master") !== state.providerType) return false;
+    if (state.providerType !== "all" && (isOrganizationProfile(master) ? "organization" : "master") !== state.providerType) return false;
     if (state.district !== "all" && master.district !== state.district) return false;
     if (state.minRating > 0 && (master.reviews < 1 || master.rating < state.minRating)) return false;
     if (master.reviews < state.minReviews || master.completedOrders < state.minOrders) return false;

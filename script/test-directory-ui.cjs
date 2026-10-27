@@ -77,7 +77,7 @@ async function context(signedIn = false, dark = false, role = 'client') {
   const { ctx } = await context();
   const page = await ctx.newPage(); page.setDefaultTimeout(5000);
   const errors = []; page.on('pageerror', error => errors.push(error.message));
-  const pages = [['/', 'masters'], ['/doctors', 'doctors'], ['/auto-parts', features.autoParts ? 'parts' : 'parts-paused'], ['/more', 'more'], ['/profile', 'profile']];
+  const pages = [['/', 'masters'], ['/doctors', 'doctors'], ['/organizations', 'organizations'], ['/organizations?kind=medical', 'clinics'], ['/auto-parts', features.autoParts ? 'parts' : 'parts-paused'], ['/more', 'more'], ['/profile', 'profile']];
   const sizes = [[320, 720], [390, 844], [430, 932], [768, 1024], [1024, 768], [1440, 1000]];
   for (const [width, height] of sizes) {
     await page.setViewportSize({ width, height });
@@ -154,7 +154,52 @@ async function context(signedIn = false, dark = false, role = 'client') {
     const services = page.getByRole('navigation', { name: 'Другие услуги' });
     if (features.autoParts) assert.equal(await services.getByRole('link', { name: 'Запчасти' }).getAttribute('href'), '/auto-parts');
     else assert.equal(await services.getByRole('link', { name: 'Запчасти' }).count(), 0);
-    assert.equal(await services.getByRole('link', { name: 'Врачи' }).getAttribute('href'), '/doctors');
+    const catalogs = page.getByRole('navigation', { name: 'Каталоги услуг' });
+    assert.deepEqual(await catalogs.getByRole('link').allTextContents(), ['Специалисты', 'Врачи', 'Организации']);
+    assert.equal(await catalogs.getByRole('link', { name: 'Врачи', exact: true }).getAttribute('href'), '/doctors');
+  });
+  await check('specialists and organizations are distinct, and catalog searches stay separate', async () => {
+    await page.goto('http://127.0.0.1:4174/');
+    await page.getByTestId(`master-card-${fixture.masters[0].id}`).waitFor();
+    for (const id of [9001, 9002, 9003]) assert.equal(await page.getByTestId(`master-card-${id}`).count(), 0);
+    await page.getByTestId('input-search').fill(fixture.masters[0].name);
+    await page.waitForTimeout(400);
+    await page.getByRole('navigation', { name: 'Каталоги услуг' }).getByRole('link', { name: 'Организации', exact: true }).click();
+    await page.getByTestId('master-card-9001').waitFor();
+    assert.equal(await page.getByTestId('input-search').inputValue(), '');
+    assert.equal(await page.getByTestId(`master-card-${fixture.masters[0].id}`).count(), 0);
+    await page.getByTestId('master-card-9003').getByRole('heading', { name: 'Тестовая старая компания', exact: true }).waitFor();
+    assert.equal(await page.getByTestId('master-card-9001').getByText('Организация', { exact: true }).count(), 1);
+    await page.getByTestId('input-search').fill('Тестовая сервисная компания');
+    await page.waitForTimeout(400);
+    await page.reload();
+    await page.getByTestId('master-card-9001').waitFor();
+    assert.equal(await page.getByTestId('input-search').inputValue(), 'Тестовая сервисная компания');
+    assert.equal(new URL(page.url()).pathname, '/organizations');
+    await page.getByRole('navigation', { name: 'Каталоги услуг' }).getByRole('link', { name: 'Специалисты', exact: true }).click();
+    await page.getByTestId(`master-card-${fixture.masters[0].id}`).waitFor();
+    assert.equal(await page.getByTestId('input-search').inputValue(), fixture.masters[0].name);
+    await page.getByTestId('input-search').fill('');
+  });
+  await check('clinic places lead to only the doctors at that exact address', async () => {
+    await page.goto('http://127.0.0.1:4174/doctors');
+    await page.getByRole('link', { name: 'Клиники и медцентры', exact: true }).click();
+    await page.getByTestId('master-card-9002').waitFor();
+    assert.equal(await page.getByTestId('master-card-9001').count(), 0);
+    const place = page.locator('[data-testid^="clinic-place-"]').first();
+    await place.waitFor();
+    const href = await place.getByRole('link').getAttribute('href');
+    const key = JSON.parse(new URL(href, 'http://127.0.0.1').searchParams.get('clinic'));
+    const expected = fixture.doctors.filter(doctor => doctor.locations.some(location => [location.clinic, location.city, location.address].map(text => text.trim().replace(/\s+/g, ' ').toLocaleLowerCase('ru-RU')).every((text, index) => text === key[index])));
+    await place.getByRole('link').click();
+    await page.getByRole('link', { name: 'Все врачи', exact: true }).waitFor();
+    await page.locator('[data-testid^="doctor-card-"]').first().waitFor();
+    assert.ok(expected.length > 0);
+    assert.equal(await page.locator('[data-testid^="doctor-card-"]').count(), expected.length);
+    for (const doctor of expected) await page.getByTestId(`doctor-card-${doctor.id}`).waitFor();
+    await page.getByRole('link', { name: 'Все врачи', exact: true }).click();
+    await page.locator('[data-testid^="doctor-card-"]').first().waitFor();
+    assert.equal(await page.locator('[data-testid^="doctor-card-"]').count(), fixture.doctors.length);
   });
   await check('compare up to three masters without navigating or losing selections', async () => {
     await page.goto('http://127.0.0.1:4174/');

@@ -21,11 +21,15 @@ interface FrameProps {
   city?: string;
   onCityClick?: () => void;
   action?: ReactNode;
+  serviceSection?: "specialists" | "doctors" | "organizations";
   children: ReactNode;
 }
-export function DirectoryFrame({ title, description, city, onCityClick, action, children }: FrameProps) {
+export function DirectoryFrame({ title, description, city, onCityClick, action, serviceSection, children }: FrameProps) {
   return <div className="app-page directory-page">
     <DirectoryTopbar />
+    {serviceSection && <div className="directory-container"><nav className="service-directory-nav" aria-label="Каталоги услуг">
+      {([{ id: "specialists", href: "/", label: "Специалисты" }, { id: "doctors", href: "/doctors", label: "Врачи" }, { id: "organizations", href: "/organizations", label: "Организации" }] as const).map(item => <Link key={item.id} href={item.href} aria-current={serviceSection === item.id ? "page" : undefined}>{item.label}</Link>)}
+    </nav></div>}
     <header className="directory-container directory-intro">
       <div className="directory-title-row">
         <h1>{title}</h1>
