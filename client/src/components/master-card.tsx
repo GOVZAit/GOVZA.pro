@@ -36,14 +36,14 @@ export function MasterCard({ master, isFavorite, onToggleFavorite, favoritePendi
     </div>
     <div className="directory-rating-row">
       {master.reviews > 0 ? <><span className="directory-rating"><Star size={14} aria-hidden="true" />{master.rating.toFixed(1)}</span><span className="directory-metadata">Отзывов: {master.reviews}</span></> : <span className="directory-metadata">Пока нет отзывов</span>}
-      {master.isOnline && <span className="directory-tag directory-available ml-auto">Онлайн</span>}
+      {master.isOnline && <span className="directory-tag directory-available ml-auto"><span className="pulse-dot" aria-hidden="true" />Онлайн</span>}
     </div>
     {master.services.length > 0 && <p className="directory-service-list">{master.services.slice(0, 2).map((service) => service.name).join(" · ")}</p>}
     {availableToday && <p className="directory-tag directory-available mt-3" data-testid={`available-today-${master.id}`}>Свободен сегодня · {availableToday.fromTime}–{availableToday.toTime}</p>}
     <div className="directory-location"><MapPin size={15} aria-hidden="true" /><p className="directory-metadata">{[master.city, master.district].filter(Boolean).join(" · ") || "Город не указан"}</p></div>
     <div className="directory-card-bottom">
       <div className="min-w-0"><span className="directory-price">{master.showPrices !== false ? master.price || "По договорённости" : "По договорённости"}</span></div>
-      <Link href={`/master/${master.id}`} aria-label={`Профиль: ${displayName}`} className="directory-secondary after:absolute after:inset-0 after:rounded-[20px] after:content-['']">Профиль<ArrowUpRight size={16} aria-hidden="true" /></Link>
+      <Link href={`/master/${master.id}`} aria-label={`Профиль: ${displayName}`} className={`${availableToday ? "directory-primary" : "directory-secondary"} after:absolute after:inset-0 after:rounded-[22px] after:content-['']`}>{availableToday ? "Записаться" : "Профиль"}<ArrowUpRight size={16} aria-hidden="true" /></Link>
     </div>
     {comparison && <button type="button" aria-pressed={comparison.selected} disabled={comparison.disabled}
       aria-label={`${comparison.selected ? "Убрать из сравнения" : "Добавить к сравнению"}: ${displayName}`}

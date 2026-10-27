@@ -7,6 +7,7 @@ import { OrderCard } from "@/components/order-card";
 import { ReviewModal } from "@/components/review-modal";
 import { BookingModal } from "@/components/booking-modal";
 import { BottomNavigation } from "@/components/bottom-navigation";
+import { OrdersSwitch } from "@/components/orders-switch";
 import { AppBrandHeader } from "@/components/app-brand-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/empty-state";
@@ -61,8 +62,8 @@ export default function OrdersPage() {
         <div className="mx-auto max-w-4xl px-4 py-4">
           <AppBrandHeader compact />
           <div className="mt-6">
-            <h1 className="text-3xl font-extrabold tracking-[-0.04em]">Мои заказы</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Текущие работы, история и переписка по заказам.</p>
+            <h1 className="text-3xl font-extrabold tracking-[-0.04em]">Заказы</h1>
+            <OrdersSwitch current="orders" />
           </div>
         </div>
       </header>

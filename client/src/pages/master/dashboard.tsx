@@ -6,8 +6,7 @@ import MasterBottomNavigation from "@/components/master-bottom-navigation";
 import OrganizationBottomNavigation from "@/components/organization-bottom-navigation";
 import { AppBrandHeader } from "@/components/app-brand-header";
 import {
-  CheckCircle2, ChevronRight, ClipboardCheck, Clock, MapPin, MessageCircle, Settings,
-  ToggleLeft, ToggleRight, Wallet,
+  ChevronRight, ClipboardCheck, Clock, MapPin, MessageCircle, Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Master, Order } from "@shared/schema";
@@ -56,10 +55,12 @@ export default function MasterDashboardPage() {
   const earnings = completed.reduce((sum, order) => sum + priceNumber(order.price), 0);
   const isOnline = master?.isOnline ?? false;
 
+  const next = active[0] ?? pending[0];
+  const today = new Intl.DateTimeFormat("ru-RU", { weekday: "long", day: "numeric", month: "long" }).format(new Date());
   const stats = [
-    { label: "Новых заказов", value: pending.length, icon: ClipboardCheck, tone: "bg-blue-500/10 text-blue-600" },
-    { label: "Активных", value: active.length, icon: CheckCircle2, tone: "bg-emerald-500/10 text-emerald-600" },
-    { label: "Заработано", value: `${earnings.toLocaleString("ru-RU")} ₽`, icon: Wallet, tone: "bg-orange-500/10 text-orange-600" },
+    { label: "новых", value: pending.length },
+    { label: "в работе", value: active.length },
+    { label: "заработано", value: `${earnings.toLocaleString("ru-RU")} ₽` },
   ];
 
   return (
@@ -67,55 +68,64 @@ export default function MasterDashboardPage() {
       <header className="app-header-shell safe-area-pt">
         <div className="mx-auto max-w-4xl px-4 py-4">
           <AppBrandHeader compact />
-          <div className="mt-6 flex items-end justify-between gap-4">
-            <div>
-              <p className="text-xs font-medium text-muted-foreground">
-                {isOrganization ? "Кабинет организации" : "Кабинет мастера"}
-              </p>
-              <h1 className="mt-1 text-3xl font-extrabold tracking-[-0.04em]">
-                {user?.name || (isOrganization ? "Организация" : "Мастер")}
-              </h1>
-            </div>
-            <button
-              type="button"
-              onClick={() => onlineMutation.mutate(!isOnline)}
-              disabled={onlineMutation.isPending}
-              aria-pressed={isOnline}
-              className={cn(
-                "pressable flex min-h-11 shrink-0 items-center gap-2 rounded-2xl border px-3 text-xs font-bold shadow-sm",
-                isOnline
-                  ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                  : "border-border/70 bg-card text-muted-foreground"
-              )}
-            >
-              {isOnline ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
-              {isOnline ? "Онлайн" : "Офлайн"}
-            </button>
+          <div className="mt-6">
+            <p className="text-sm font-semibold capitalize text-muted-foreground">{today}</p>
+            <h1 className="display-face mt-1 text-3xl font-semibold">
+              {user?.name ? `Сегодня, ${user.name.split(/\s+/)[0]}` : "Сегодня"}
+            </h1>
+            <p className="mt-1 text-xs font-medium text-muted-foreground">
+              {isOrganization ? "Кабинет организации" : "Кабинет мастера"}
+            </p>
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-4xl space-y-5 px-4 py-5">
-        {!isOnline && (
-          <div className="rounded-[1.4rem] border border-amber-400/20 bg-amber-400/10 px-4 py-3">
-            <p className="text-sm font-bold text-amber-800 dark:text-amber-300">Вы сейчас офлайн</p>
-            <p className="mt-1 text-xs leading-relaxed text-amber-700/80 dark:text-amber-300/80">
-              Профиль остаётся доступен, но клиенты видят, что вы не в сети.
-            </p>
-          </div>
-        )}
+        <button
+          type="button"
+          onClick={() => onlineMutation.mutate(!isOnline)}
+          disabled={onlineMutation.isPending || !master}
+          aria-pressed={isOnline}
+          className={cn("pro-online pressable", isOnline && "is-on")}
+          data-testid="button-online-toggle"
+        >
+          <span className="min-w-0 flex-1">
+            <b>{isOnline ? "Вы на линии" : "Вы не на линии"}</b>
+            <small>{isOnline ? "Клиенты видят «Свободен сейчас» и могут сразу записаться" : "Профиль доступен, но в «Свободны сейчас» вас не видно"}</small>
+          </span>
+          <span className="pro-switch" aria-hidden="true" />
+        </button>
 
-        <section className="grid grid-cols-3 gap-3">
-          {stats.map(({ label, value, icon: Icon, tone }) => (
-            <div key={label} className="premium-card min-h-[126px] p-3.5">
-              <div className={cn("flex h-9 w-9 items-center justify-center rounded-2xl", tone)}>
-                <Icon className="h-4 w-4" />
-              </div>
-              <p className="mt-4 text-lg font-extrabold leading-tight tracking-[-0.03em]">{isLoading ? "—" : value}</p>
-              <p className="mt-1 text-[10px] leading-tight text-muted-foreground">{label}</p>
+        <section className="grid grid-cols-3 gap-2" aria-label="Сводка">
+          {stats.map(({ label, value }) => (
+            <div key={label} className="pro-stat">
+              <b>{isLoading ? "—" : value}</b>
+              <span>{label}</span>
             </div>
           ))}
         </section>
+
+        {next && (
+          <section aria-label="Следующий заказ">
+            <h2 className="section-title mb-3">{next.status === "in_progress" ? "Сейчас в работе" : "Ждёт вашего решения"}</h2>
+            <div className="pro-next" data-testid={`dashboard-next-${next.id}`}>
+              <div className="flex items-center justify-between gap-3">
+                <time>{next.date}</time>
+                <span className="shrink-0 text-base font-extrabold">{next.price}</span>
+              </div>
+              <div className="mt-2 text-base font-extrabold">{next.title}</div>
+              {next.address && <p className="flex items-start gap-1.5"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />{next.address}</p>}
+              <div className="pro-next-actions">
+                <button type="button" onClick={() => navigate(ordersPath)}>
+                  {next.status === "in_progress" ? "Открыть заказ" : "Принять или отклонить"}
+                </button>
+                <button type="button" onClick={() => navigate(`${ordersPath}/${next.id}/chat`)} aria-label="Чат с клиентом">
+                  <MessageCircle className="h-5 w-5" aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
 
         <section>
           <div className="mb-3 flex items-center justify-between gap-3">

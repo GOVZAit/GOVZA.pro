@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 import "./styles/directory.css";
+import "./styles/redesign.css";
 import { attemptAutomaticStaleAssetRecovery } from "@/lib/stale-asset-recovery";
 
 window.addEventListener("vite:preloadError", (event) => {

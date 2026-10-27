@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { useEffect, useState } from "react";
+import { useLocation, useSearch } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BadgeCheck, CheckCircle2, ChevronDown, ChevronUp, Clock,
@@ -11,6 +11,7 @@ import { BottomNavigation } from "@/components/bottom-navigation";
 import { BroadcastModal } from "@/components/broadcast-modal";
 import { EmptyState } from "@/components/empty-state";
 import { AppBrandHeader } from "@/components/app-brand-header";
+import { OrdersSwitch } from "@/components/orders-switch";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -173,7 +174,14 @@ function RequestCard({ request }: { request: ServiceRequestView }) {
 export default function RequestsPage() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
-  const [showCreate, setShowCreate] = useState(false);
+  const search = useSearch();
+  const [showCreate, setShowCreate] = useState(() => new URLSearchParams(search).get("new") === "1");
+  // The "+" in the bottom navigation links here with ?new=1, including when this page is already open.
+  useEffect(() => {
+    if (new URLSearchParams(search).get("new") !== "1") return;
+    setShowCreate(true);
+    navigate("/requests", { replace: true });
+  }, [search]);
 
   const { data: requests = [], isLoading, isError } = useQuery<ServiceRequestView[]>({
     queryKey: ["/api/requests"],
@@ -191,6 +199,7 @@ export default function RequestsPage() {
             action={<Button onClick={() => navigate("/auth")} className="rounded-2xl">Войти</Button>}
           />
         </main>
+        {showCreate && <BroadcastModal onClose={() => setShowCreate(false)} />}
         <BottomNavigation />
       </div>
     );
@@ -203,8 +212,8 @@ export default function RequestsPage() {
           <AppBrandHeader compact />
           <div className="mt-6 flex items-end justify-between gap-3">
             <div>
-              <h1 className="text-3xl font-extrabold tracking-[-0.04em]">Мои заявки</h1>
-              <p className="mt-1 text-sm text-muted-foreground">Смотрите отклики и выбирайте подходящего исполнителя.</p>
+              <h1 className="text-3xl font-extrabold tracking-[-0.04em]">Заказы</h1>
+              <OrdersSwitch current="requests" />
             </div>
             <Button size="icon" aria-label="Создать заявку" onClick={() => setShowCreate(true)} className="h-12 w-12 rounded-2xl shadow-sm">
               <Plus className="h-5 w-5" />
@@ -214,7 +223,6 @@ export default function RequestsPage() {
       </header>
 
       <main className="mx-auto max-w-4xl px-4 py-5">
-        <Link href="/orders" className="directory-secondary mb-4">Мои заказы</Link>
         {isLoading ? (
           <div className="grid gap-4 lg:grid-cols-2">{[1, 2, 3, 4].map((item) => <Skeleton key={item} className="h-56 rounded-[1.5rem]" />)}</div>
         ) : isError ? (
